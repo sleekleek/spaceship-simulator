@@ -50,6 +50,7 @@ class Planet:
         glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_DECAL)
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB,
                      img.size[0], img.size[1], 0, GL_RGB, GL_UNSIGNED_BYTE, img_data)
+
         return textID
 
     def runScene(self):
@@ -66,5 +67,5 @@ class Planet:
 
 
 if __name__ == '__main__':
-    moon = Planet('solar_textures/2k_moon.jpg')
+    moon = Planet('data/moon/Texture.jpg')
     moon.runScene()
