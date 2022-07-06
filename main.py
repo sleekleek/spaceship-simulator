@@ -28,7 +28,8 @@ def main():
     glutMainLoop()  # Keeps the window created above displaying/running in a loop
 
     # Load models
-    
+    earth = Planet("data/earth/")
+
 
     cam = Camera()
 

@@ -1,5 +1,6 @@
-glm
-pyassimp
-PyOpenGL
-PyOpenGL_accelerate
-pyrr
+glm==0.4.3
+numpy==1.21.2
+Pillow==9.2.0
+pyassimp==4.1.4
+PyOpenGL==3.1.6
+pyrr==0.10.3
