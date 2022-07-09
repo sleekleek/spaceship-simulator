@@ -58,6 +58,10 @@ if not glfw.init():
     raise Exception("Error: glfw cannot be initialized")
 
 # Creating the window
+glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 4)
+glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 1)
+glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, GL_TRUE)
+glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
 window = glfw.create_window(1280, 720, NAME, None, None)
 print("Window initialised!")
 
@@ -72,6 +76,8 @@ glfw.set_window_pos(window, 200, 200)
 glfw.set_window_size_callback(window, window_resize)
 # Make the context current
 glfw.make_context_current(window)
+VAO = glGenVertexArrays(1)
+glBindVertexArray(VAO)
 
 # Load 3d meshes
 moon_indices, moon_buffer = ObjLoader.load_model("data/moon/Model.obj")
@@ -86,7 +92,7 @@ uranus_indices, uranus_buffer = ObjLoader.load_model("data/uranus/Model.obj")
 neptune_indices, neptune_buffer = ObjLoader.load_model("data/neptune/Model.obj")
 print("Meshes loaded!")
 
-shader = compileProgram(compileShader(
+shader = OpenGL.GL.shaders.compileProgram(compileShader(
     VERTEX_SRC, GL_VERTEX_SHADER), compileShader(FRAGMENT_SRC, GL_FRAGMENT_SHADER))
 
 # VAO, VBO and EBO binding
