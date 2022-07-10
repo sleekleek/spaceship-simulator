@@ -1,9 +1,11 @@
-import glfw, pyrr
-
-from objLoader import ObjLoader
-from textureMapper import TextureMapper
+import glfw, pyrr, pygame
 
 from OpenGL.GL import *
+from pygame.locals import *
+
+from camera import Camera
+from objLoader import ObjLoader
+from textureMapper import TextureMapper
 from OpenGL.GL.shaders import compileProgram, compileShader
 
 
@@ -48,21 +50,86 @@ void main()
 # glfw callback functions
 def window_resize(window, width, height):
     glViewport(0, 0, width, height)
-    projection = pyrr.matrix44.create_perspective_projection_matrix(
-        45, width / height, 0.1, 100)
+    projection = pyrr.matrix44.create_perspective_projection_matrix(45, width / height, 0.1, 100)
     glUniformMatrix4fv(proj_loc, 1, GL_FALSE, projection)
+
+def mouse_enter_clb(window, entered):
+    global first_mouse
+
+    if entered:
+        first_mouse = False
+    else:
+        first_mouse = True
+
+def mouse_look_clb(window, xpos, ypos):
+    global lastX, lastY
+
+    if first_mouse:
+        lastX = xpos
+        lastY = ypos
+
+    xoffset = xpos - lastX
+    yoffset = lastY - ypos
+
+    lastX = xpos
+    lastY = ypos
+
+    cam.process_mouse_movement(xoffset, yoffset)
+
+def key_callback(window, key, scancode, action, mods):
+    global left, right, forward, backward
+
+    if key == glfw.KEY_ESCAPE and action == glfw.PRESS:
+        glfw.set_window_should_close(window, True)
+
+    if key == glfw.KEY_W and action == glfw.PRESS:
+        forward = True
+    elif key == glfw.KEY_W and action == glfw.RELEASE:
+        forward = False
+    if key == glfw.KEY_S and action == glfw.PRESS:
+        backward = True
+    elif key == glfw.KEY_S and action == glfw.RELEASE:
+        backward = False
+    if key == glfw.KEY_A and action == glfw.PRESS:
+        left = True
+    elif key == glfw.KEY_A and action == glfw.RELEASE:
+        left = False
+    if key == glfw.KEY_D and action == glfw.PRESS:
+        right = True
+    elif key == glfw.KEY_D and action == glfw.RELEASE:
+        right = False
+    # if key in [glfw.KEY_W, glfw.KEY_S, glfw.KEY_D, glfw.KEY_A] and action == glfw.RELEASE:
+    #     left, right, forward, backward = False, False, False, False
+
+# move camera view, called in the main loop
+def move_cam():
+    if left:
+        cam.process_keyboard("LEFT", 0.05)
+    if right:
+        cam.process_keyboard("RIGHT", 0.05)
+    if forward:
+        cam.process_keyboard("FORWARD", 0.05)
+    if backward:
+        cam.process_keyboard("BACKWARD", 0.05)
 
 
 # Initializing glfw library
 if not glfw.init():
     raise Exception("Error: glfw cannot be initialized")
 
+# initialising camera
+cam = Camera()
+WIDTH, HEIGHT = 1280, 720
+lastX, lastY = WIDTH / 2, HEIGHT / 2
+first_mouse = True
+left, right, forward, backward = False, False, False, False
+
 # Creating the window
 glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 4)
 glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 1)
 glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, GL_TRUE)
 glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
-window = glfw.create_window(1280, 720, NAME, None, None)
+window = glfw.create_window(WIDTH, HEIGHT, NAME, None, None)
 print("Window initialised!")
 
 # Check if window was created
@@ -75,6 +142,16 @@ glfw.set_window_pos(window, 200, 200)
 
 # Set the callback function for window resize
 glfw.set_window_size_callback(window, window_resize)
+
+# set mouse entering window callback
+glfw.set_cursor_enter_callback(window, mouse_enter_clb)
+
+# set mouse position callback
+glfw.set_cursor_pos_callback(window, mouse_look_clb)
+
+# set keyboard input callback
+glfw.set_key_callback(window, key_callback)
+
 
 # Make the context current
 glfw.make_context_current(window)
@@ -191,14 +268,21 @@ def rotate_draw(index):
 
 # The main application loop
 while not glfw.window_should_close(window):
-    glfw.poll_events()
-
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+
+    view = cam.get_view_matrix()
+    glUniformMatrix4fv(view_loc, 1, GL_FALSE, view)
 
     for index in range(len(planet_names)):
         rotate_draw(index)
 
+    # Swap front and back buffers
     glfw.swap_buffers(window)
+
+    # Poll for and process events
+    glfw.poll_events()
+
+    move_cam()
 
 # terminate glfw, free up allocated resources
 glfw.terminate()
