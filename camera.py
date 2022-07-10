@@ -1,11 +1,16 @@
 from pyrr import Vector3, vector, vector3, matrix44
-from math import sin, cos, radians
+from math import sin, cos, radians, pow
+import numpy as np
 
 # https://github.com/totex/Learn-OpenGL-in-python/blob/master/camera.py
 
+np.seterr(divide='ignore', invalid='ignore')
+
 class Camera:
-    def __init__(self):
-        self.camera_pos = Vector3([0.0, 4.0, 3.0])
+    def __init__(self, boundary):
+        self.boundary = boundary
+        
+        self.camera_pos = Vector3([0.0, 0.0, 0.0])
         self.camera_front = Vector3([0.0, 0.0, -1.0])
         self.camera_up = Vector3([0.0, 1.0, 0.0])
         self.camera_right = Vector3([1.0, 0.0, 0.0])
@@ -44,13 +49,23 @@ class Camera:
         self.camera_up = vector.normalise(
             vector3.cross(self.camera_right, self.camera_front))
 
+    def check_new_camera_pos(self, new_camera_pos):
+        # Check if new_camera_pos is within ellipsoid
+        if pow(new_camera_pos.x / self.boundary.x, 2) + pow(new_camera_pos.y / self.boundary.y, 2) + pow(new_camera_pos.z / self.boundary.z, 2) < 1:
+            return True 
+        else:
+            return False
+
     # Camera method for the WASD movement
     def process_keyboard(self, direction, velocity):
         if direction == "FORWARD":
-            self.camera_pos += self.camera_front * velocity
+            new_camera_pos = self.camera_pos + self.camera_front * velocity
         if direction == "BACKWARD":
-            self.camera_pos -= self.camera_front * velocity
+            new_camera_pos = self.camera_pos - self.camera_front * velocity
         if direction == "LEFT":
-            self.camera_pos -= self.camera_right * velocity
+            new_camera_pos = self.camera_pos - self.camera_right * velocity
         if direction == "RIGHT":
-            self.camera_pos += self.camera_right * velocity
+            new_camera_pos = self.camera_pos + self.camera_right * velocity
+        
+        if (self.check_new_camera_pos(new_camera_pos)):
+                self.camera_pos = new_camera_pos

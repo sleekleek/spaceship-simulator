@@ -103,13 +103,13 @@ def key_callback(window, key, scancode, action, mods):
 # move camera view, called in the main loop
 def move_cam():
     if left:
-        cam.process_keyboard("LEFT", 0.05)
+        cam.process_keyboard("LEFT", 0.025)
     if right:
-        cam.process_keyboard("RIGHT", 0.05)
+        cam.process_keyboard("RIGHT", 0.025)
     if forward:
-        cam.process_keyboard("FORWARD", 0.05)
+        cam.process_keyboard("FORWARD", 0.025)
     if backward:
-        cam.process_keyboard("BACKWARD", 0.05)
+        cam.process_keyboard("BACKWARD", 0.025)
 
 
 # Initializing glfw library
@@ -117,7 +117,7 @@ if not glfw.init():
     raise Exception("Error: glfw cannot be initialized")
 
 # initialising camera
-cam = Camera()
+cam = Camera(boundary=pyrr.Vector3([30.0, 30.0, 30.0]))
 WIDTH, HEIGHT = 1280, 720
 lastX, lastY = WIDTH / 2, HEIGHT / 2
 first_mouse = True
@@ -159,6 +159,7 @@ glBindVertexArray(VAO)
 
 # Load 3d meshes
 planet_names = ['moon', 'sun', 'mercury', 'venus', 'earth', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune']
+planet_speed = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
 planet_indices = [None for i in range(len(planet_names))]
 planet_buffers = [None for i in range(len(planet_names))]
 
@@ -223,16 +224,16 @@ glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 projection = pyrr.matrix44.create_perspective_projection_matrix(45, 1280 / 720, 0.1, 100)
 
 # Set positions
-moon_coor = [0, 8, -12]
-sun_coor = [-20, 0, 0]
-mercury_coor = [-15, 0, 0]
-venus_coor = [-10, 0, 0]
-earth_coor = [-5, 0, 0]
-mars_coor = [0, 0, 0]
-jupiter_coor = [5, 0, 0]
-saturn_coor = [10, 0, 0]
-uranus_coor = [15, 0, 0]
-neptune_coor = [20, 0, 0]
+moon_coor = [0, 12, -18]
+sun_coor = [-20, 5, 0]
+mercury_coor = [-15, 5, 0]
+venus_coor = [-10, 5, 0]
+earth_coor = [-5, 5, 0]
+mars_coor = [0, 5, 0]
+jupiter_coor = [5, 5, 0]
+saturn_coor = [10, 5, 0]
+uranus_coor = [15, 5, 0]
+neptune_coor = [20, 5, 0]
 
 planet_translations = [moon_coor, sun_coor, mercury_coor, venus_coor, earth_coor, mars_coor, jupiter_coor, saturn_coor, uranus_coor, neptune_coor]
 planet_positions = []
@@ -254,7 +255,7 @@ glUniformMatrix4fv(view_loc, 1, GL_FALSE, view)
 
 def rotate_draw(index):
     # Rotate
-    rot_y = pyrr.Matrix44.from_y_rotation(0.8 * glfw.get_time())
+    rot_y = pyrr.Matrix44.from_y_rotation(planet_speed[index] * glfw.get_time())
     model = pyrr.matrix44.multiply(rot_y, planet_positions[index])
 
     # Draw
