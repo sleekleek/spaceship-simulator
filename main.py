@@ -1,7 +1,6 @@
-import glfw, pyrr, pygame
+import glfw, pyrr
 
 from OpenGL.GL import *
-from pygame.locals import *
 
 from camera import Camera
 from objLoader import ObjLoader
