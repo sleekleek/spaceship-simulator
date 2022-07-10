@@ -1,10 +1,10 @@
-import glfw
-from OpenGL.GL import *
-from OpenGL.GL.shaders import compileProgram, compileShader
-import pyrr
+import glfw, pyrr
 
 from objLoader import ObjLoader
 from textureMapper import TextureMapper
+
+from OpenGL.GL import *
+from OpenGL.GL.shaders import compileProgram, compileShader
 
 
 NAME = 'Fly Me To The Moon'
@@ -72,8 +72,10 @@ if not window:
 
 # Set window's position
 glfw.set_window_pos(window, 200, 200)
+
 # Set the callback function for window resize
 glfw.set_window_size_callback(window, window_resize)
+
 # Make the context current
 glfw.make_context_current(window)
 VAO = glGenVertexArrays(1)
@@ -81,11 +83,11 @@ glBindVertexArray(VAO)
 
 # Load 3d meshes
 planet_names = ['moon', 'sun', 'mercury', 'venus', 'earth', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune']
-indices = [None for i in range(len(planet_names))]
-buffers = [None for i in range(len(planet_names))]
+planet_indices = [None for i in range(len(planet_names))]
+planet_buffers = [None for i in range(len(planet_names))]
 
-for planet_index in range(len(planet_names)):
-    indices[planet_index], buffers[planet_index] = ObjLoader.load_model(f'data/{planet_names[planet_index]}/Model.obj')
+for index in range(len(planet_names)):
+    planet_indices[index], planet_buffers[index] = ObjLoader.load_model(f'data/{planet_names[index]}/Model.obj')
 
 print("Meshes loaded!")
 
@@ -97,39 +99,42 @@ VAO = glGenVertexArrays(10)
 VBO = glGenBuffers(10)
 # EBO = glGenBuffers(10)
 
-def configure_arrays(planet_index):
+
+def configure_arrays(index):
     # VAO
-    glBindVertexArray(VAO[planet_index])
+    glBindVertexArray(VAO[index])
+
     # VBO
     glBindBuffer(GL_ARRAY_BUFFER, VBO[0])
-    glBufferData(GL_ARRAY_BUFFER, buffers[planet_index].nbytes, buffers[planet_index], GL_STATIC_DRAW)
+    glBufferData(GL_ARRAY_BUFFER, planet_buffers[index].nbytes, planet_buffers[index], GL_STATIC_DRAW)
+
     # EBO
-    # glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO[planet_index])
-    # glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices[planet_index].nbytes, indices[planet_index], GL_STATIC_DRAW)
+    # glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO[index])
+    # glBufferData(GL_ELEMENT_ARRAY_BUFFER, planet_indices[index].nbytes, planet_indices[index], GL_STATIC_DRAW)
+
     # vertices
     glEnableVertexAttribArray(0)
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,
-                          buffers[planet_index].itemsize * 8, ctypes.c_void_p(0))
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, planet_buffers[index].itemsize * 8, ctypes.c_void_p(0))
+
     # textures
     glEnableVertexAttribArray(1)
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE,
-                          buffers[planet_index].itemsize * 8, ctypes.c_void_p(12))
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, planet_buffers[index].itemsize * 8, ctypes.c_void_p(12))
+
     # normals
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE,
-                          buffers[planet_index].itemsize * 8, ctypes.c_void_p(20))
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, planet_buffers[index].itemsize * 8, ctypes.c_void_p(20))
     glEnableVertexAttribArray(2)
 
 
-for planet_index in range(len(planet_names)):
-    configure_arrays(planet_index)
+for index in range(len(planet_names)):
+    configure_arrays(index)
 
 print("VAO, VBO binded!")
 
 # Map textures
 textures = glGenTextures(10)
 
-for planet_index in range(len(planet_names)):
-    TextureMapper(f'data/{planet_names[planet_index]}/Texture.jpg', textures[planet_index])
+for index in range(len(planet_names)):
+    TextureMapper(f'data/{planet_names[index]}/Texture.jpg', textures[index])
 
 print("Textures mapped!")
 
@@ -139,22 +144,25 @@ glEnable(GL_DEPTH_TEST)
 glEnable(GL_BLEND)
 glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
-projection = pyrr.matrix44.create_perspective_projection_matrix(
-    45, 1280 / 720, 0.1, 100)
+projection = pyrr.matrix44.create_perspective_projection_matrix(45, 1280 / 720, 0.1, 100)
 
 # Set positions
-moon_pos = pyrr.matrix44.create_from_translation(pyrr.Vector3([0, 8, -12]))
-sun_pos = pyrr.matrix44.create_from_translation(pyrr.Vector3([-20, 0, 0]))
-mercury_pos = pyrr.matrix44.create_from_translation(pyrr.Vector3([-15, 0, 0]))
-venus_pos = pyrr.matrix44.create_from_translation(pyrr.Vector3([-10, 0, 0]))
-earth_pos = pyrr.matrix44.create_from_translation(pyrr.Vector3([-5, 0, 0]))
-mars_pos = pyrr.matrix44.create_from_translation(pyrr.Vector3([0, 0, 0]))
-jupiter_pos = pyrr.matrix44.create_from_translation(pyrr.Vector3([5, 0, 0]))
-saturn_pos = pyrr.matrix44.create_from_translation(pyrr.Vector3([10, 0, 0]))
-uranus_pos = pyrr.matrix44.create_from_translation(pyrr.Vector3([15, 0, 0]))
-neptune_pos = pyrr.matrix44.create_from_translation(pyrr.Vector3([20, 0, 0]))
+moon_coor = [0, 8, -12]
+sun_coor = [-20, 0, 0]
+mercury_coor = [-15, 0, 0]
+venus_coor = [-10, 0, 0]
+earth_coor = [-5, 0, 0]
+mars_coor = [0, 0, 0]
+jupiter_coor = [5, 0, 0]
+saturn_coor = [10, 0, 0]
+uranus_coor = [15, 0, 0]
+neptune_coor = [20, 0, 0]
 
-positions = [moon_pos, sun_pos, mercury_pos, venus_pos, earth_pos, mars_pos, jupiter_pos, saturn_pos, uranus_pos, neptune_pos]
+planet_translations = [moon_coor, sun_coor, mercury_coor, venus_coor, earth_coor, mars_coor, jupiter_coor, saturn_coor, uranus_coor, neptune_coor]
+planet_positions = []
+
+for index in range(len(planet_names)):
+    planet_positions.append(pyrr.matrix44.create_from_translation(pyrr.Vector3(planet_translations[index])))
 
 # Eye, target, up
 view = pyrr.matrix44.create_look_at(pyrr.Vector3(
@@ -167,26 +175,28 @@ view_loc = glGetUniformLocation(shader, "view")
 glUniformMatrix4fv(proj_loc, 1, GL_FALSE, projection)
 glUniformMatrix4fv(view_loc, 1, GL_FALSE, view)
 
+
+def rotate_draw(index):
+    # Rotate
+    rot_y = pyrr.Matrix44.from_y_rotation(0.8 * glfw.get_time())
+    model = pyrr.matrix44.multiply(rot_y, planet_positions[index])
+
+    # Draw
+    glBindVertexArray(VAO[index])
+    glBindTexture(GL_TEXTURE_2D, textures[index])
+    glUniformMatrix4fv(model_loc, 1, GL_FALSE, model)
+    glDrawArrays(GL_TRIANGLES, 0, len(planet_indices[index]))
+    # glDrawElements(GL_TRIANGLES, len(planet_indices[index]), GL_UNSIGNED_INT, None)
+
+
 # The main application loop
 while not glfw.window_should_close(window):
     glfw.poll_events()
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
-    def rotate_draw(planet_index):      
-        # Rotate
-        rot_y = pyrr.Matrix44.from_y_rotation(0.8 * glfw.get_time())
-        model = pyrr.matrix44.multiply(rot_y, positions[planet_index])
-
-        # Draw
-        glBindVertexArray(VAO[planet_index])
-        glBindTexture(GL_TEXTURE_2D, textures[planet_index])
-        glUniformMatrix4fv(model_loc, 1, GL_FALSE, model)
-        glDrawArrays(GL_TRIANGLES, 0, len(indices[planet_index]))
-        # glDrawElements(GL_TRIANGLES, len(indices[planet_index]), GL_UNSIGNED_INT, None)
-
-    for planet_index in range(len(planet_names)):
-        rotate_draw(planet_index)
+    for index in range(len(planet_names)):
+        rotate_draw(index)
 
     glfw.swap_buffers(window)
 
