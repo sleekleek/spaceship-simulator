@@ -66,6 +66,10 @@ class Camera:
             new_camera_pos = self.camera_pos - self.camera_right * velocity
         if direction == "RIGHT":
             new_camera_pos = self.camera_pos + self.camera_right * velocity
+        if direction == "UP":
+            new_camera_pos = self.camera_pos + self.camera_up * velocity
+        if direction == "DOWN":
+            new_camera_pos = self.camera_pos - self.camera_up * velocity
         
         if (self.check_new_camera_pos(new_camera_pos)):
                 self.camera_pos = new_camera_pos

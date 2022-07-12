@@ -1,5 +1,6 @@
-import glfw, pyrr
+import pyrr
 
+from glfw import *
 from OpenGL.GL import *
 
 from camera import Camera
@@ -49,6 +50,11 @@ void main()
 # glfw callback functions
 def window_resize(window, width, height):
     glViewport(0, 0, width, height)
+
+    # prevent division by zero error when minimising screen
+    if height == 0:
+        height = 1
+
     projection = pyrr.matrix44.create_perspective_projection_matrix(45, width / height, 0.1, 100)
     glUniformMatrix4fv(proj_loc, 1, GL_FALSE, projection)
 
@@ -75,45 +81,121 @@ def mouse_look_clb(window, xpos, ypos):
 
     cam.process_mouse_movement(xoffset, yoffset)
 
+def scroll_callback(window, xoff, yoff):
+    global velocity
+
+    if yoff == 1:
+        velocity += 0.01
+    if yoff == -1:
+        velocity -= 0.01
+
 def key_callback(window, key, scancode, action, mods):
-    global left, right, forward, backward
+    global left, right, forward, backward, up, down
 
-    if key == glfw.KEY_ESCAPE and action == glfw.PRESS:
-        glfw.set_window_should_close(window, True)
+    if key == KEY_ESCAPE and action == PRESS:
+        set_window_should_close(window, True)
 
-    if key == glfw.KEY_W and action == glfw.PRESS:
+    if key == KEY_W and action == PRESS:
         forward = True
-    elif key == glfw.KEY_W and action == glfw.RELEASE:
+    elif key == KEY_W and action == RELEASE:
         forward = False
-    if key == glfw.KEY_S and action == glfw.PRESS:
+
+    if key == KEY_S and action == PRESS:
         backward = True
-    elif key == glfw.KEY_S and action == glfw.RELEASE:
+    elif key == KEY_S and action == RELEASE:
         backward = False
-    if key == glfw.KEY_A and action == glfw.PRESS:
+
+    if key == KEY_A and action == PRESS:
         left = True
-    elif key == glfw.KEY_A and action == glfw.RELEASE:
+    elif key == KEY_A and action == RELEASE:
         left = False
-    if key == glfw.KEY_D and action == glfw.PRESS:
+
+    if key == KEY_D and action == PRESS:
         right = True
-    elif key == glfw.KEY_D and action == glfw.RELEASE:
+    elif key == KEY_D and action == RELEASE:
         right = False
-    # if key in [glfw.KEY_W, glfw.KEY_S, glfw.KEY_D, glfw.KEY_A] and action == glfw.RELEASE:
+
+    if key == KEY_SPACE and action == PRESS:
+        up = True
+    elif key == KEY_SPACE and action == RELEASE:
+        up = False
+
+    if key == KEY_LEFT_CONTROL and action == PRESS:
+        down = True
+    elif key == KEY_LEFT_CONTROL and action == RELEASE:
+        down = False
+
+    # if key in [KEY_W, KEY_S, KEY_D, KEY_A] and action == RELEASE:
     #     left, right, forward, backward = False, False, False, False
 
+def process_gamepad_input(gamepad_state):
+    if gamepad_state == None:
+        return
+
+    global left, right, forward, backward, up, down
+
+    # process right thumbstick to turn camera
+    turn_multiplier = 5
+    right_xoffset, right_yoffset = gamepad_state[1][2:4]
+    cam.process_mouse_movement(right_xoffset * turn_multiplier, -right_yoffset * turn_multiplier)
+
+    # process left thumbstick to move front/back, left/right
+    left_xoffset, left_yoffset = gamepad_state[1][0:2]
+
+    if abs(left_xoffset) > 0.2:
+        if left_xoffset > 0:
+            left = False
+            right = True
+        elif left_xoffset < 0:
+            left = True
+            right = False
+    else:
+        left = False
+        right = False
+
+    if abs(left_yoffset) > 0.2:
+        if left_yoffset > 0:
+            forward = False
+            backward = True
+        elif left_yoffset < 0:
+            forward = True
+            backward = False
+    else:
+        forward = False
+        backward = False
+
+    # process left/right triggers to move down/up
+    left_trigger, right_trigger = gamepad_state[1][4:]
+
+    if left_trigger == 1:
+        down = True
+    else:
+        down = False
+
+    if right_trigger == 1:
+        up = True
+    else:
+        up = False
+
+
 # move camera view, called in the main loop
-def move_cam():
+def move_cam(velocity):
     if left:
-        cam.process_keyboard("LEFT", 0.025)
+        cam.process_keyboard("LEFT", velocity)
     if right:
-        cam.process_keyboard("RIGHT", 0.025)
+        cam.process_keyboard("RIGHT", velocity)
     if forward:
-        cam.process_keyboard("FORWARD", 0.025)
+        cam.process_keyboard("FORWARD", velocity)
     if backward:
-        cam.process_keyboard("BACKWARD", 0.025)
+        cam.process_keyboard("BACKWARD", velocity)
+    if up:
+        cam.process_keyboard("UP", velocity)
+    if down:
+        cam.process_keyboard("DOWN", velocity)
 
 
 # Initializing glfw library
-if not glfw.init():
+if not init():
     raise Exception("Error: glfw cannot be initialized")
 
 # initialising camera
@@ -121,39 +203,43 @@ cam = Camera(boundary=pyrr.Vector3([30.0, 30.0, 30.0]))
 WIDTH, HEIGHT = 1280, 720
 lastX, lastY = WIDTH / 2, HEIGHT / 2
 first_mouse = True
-left, right, forward, backward = False, False, False, False
+left, right, forward, backward, up, down = [False for x in range(6)]
+velocity = 0.05
 
 # Creating the window
-glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 4)
-glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 1)
-glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, GL_TRUE)
-glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
-window = glfw.create_window(WIDTH, HEIGHT, NAME, None, None)
+window_hint(CONTEXT_VERSION_MAJOR, 4)
+window_hint(CONTEXT_VERSION_MINOR, 1)
+window_hint(OPENGL_FORWARD_COMPAT, GL_TRUE)
+window_hint(OPENGL_PROFILE, OPENGL_CORE_PROFILE)
+window = create_window(WIDTH, HEIGHT, NAME, None, None)
 print("Window initialised!")
 
 # Check if window was created
 if not window:
-    glfw.terminate()
+    terminate()
     raise Exception("Error: glfw window cannot be created")
 
 # Set window's position
-glfw.set_window_pos(window, 200, 200)
+set_window_pos(window, 200, 200)
 
 # Set the callback function for window resize
-glfw.set_window_size_callback(window, window_resize)
+set_window_size_callback(window, window_resize)
 
 # set mouse entering window callback
-glfw.set_cursor_enter_callback(window, mouse_enter_clb)
+set_cursor_enter_callback(window, mouse_enter_clb)
 
 # set mouse position callback
-glfw.set_cursor_pos_callback(window, mouse_look_clb)
+set_cursor_pos_callback(window, mouse_look_clb)
+
+# set mouse scroll callback
+set_scroll_callback(window, scroll_callback)
 
 # set keyboard input callback
-glfw.set_key_callback(window, key_callback)
+set_key_callback(window, key_callback)
 
 
 # Make the context current
-glfw.make_context_current(window)
+make_context_current(window)
 VAO = glGenVertexArrays(1)
 glBindVertexArray(VAO)
 
@@ -255,7 +341,7 @@ glUniformMatrix4fv(view_loc, 1, GL_FALSE, view)
 
 def rotate_draw(index):
     # Rotate
-    rot_y = pyrr.Matrix44.from_y_rotation(planet_speed[index] * glfw.get_time())
+    rot_y = pyrr.Matrix44.from_y_rotation(planet_speed[index] * get_time())
     model = pyrr.matrix44.multiply(rot_y, planet_positions[index])
 
     # Draw
@@ -267,7 +353,7 @@ def rotate_draw(index):
 
 
 # The main application loop
-while not glfw.window_should_close(window):
+while not window_should_close(window):
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
     view = cam.get_view_matrix()
@@ -277,12 +363,14 @@ while not glfw.window_should_close(window):
         rotate_draw(index)
 
     # Swap front and back buffers
-    glfw.swap_buffers(window)
+    swap_buffers(window)
 
     # Poll for and process events
-    glfw.poll_events()
+    poll_events()
 
-    move_cam()
+    process_gamepad_input(get_gamepad_state(0))
+
+    move_cam(velocity)
 
 # terminate glfw, free up allocated resources
-glfw.terminate()
+terminate()
