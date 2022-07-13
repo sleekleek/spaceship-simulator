@@ -345,6 +345,7 @@ glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 projection = pyrr.matrix44.create_perspective_projection_matrix(45, WIDTH / HEIGHT, 0.1, 100)
 
 # Set positions
+<<<<<<< HEAD
 moon_coor = [6, 1, -6]
 sun_coor = [0, 0, 0]
 mercury_coor = [10, 0, -10]
@@ -355,6 +356,18 @@ jupiter_coor = [18, 0, -18]
 saturn_coor = [24, 0, -24]
 uranus_coor = [40, 0, -40]
 neptune_coor = [65, 0, -65]
+=======
+moon_coor = [0, 12, -24]
+sun_coor = [-20, 5, -24]
+mercury_coor = [-15, 5, -24]
+venus_coor = [-10, 5, -24]
+earth_coor = [-5, 5, -24]
+mars_coor = [0, 5, -24]
+jupiter_coor = [5, 5, -24]
+saturn_coor = [15, 5, -24]
+uranus_coor = [25, 5, -24]
+neptune_coor = [30, 5, -24]
+>>>>>>> 7bb89f4d4fc9cb75c8a1f22ad75efbe91659a7e1
 
 planet_translations = [moon_coor, sun_coor, mercury_coor, venus_coor, earth_coor, mars_coor, jupiter_coor, saturn_coor, uranus_coor, neptune_coor]
 planet_positions = []

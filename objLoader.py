@@ -79,7 +79,7 @@ class ObjLoader:
                     elif values[0] == 'vn':
                         ObjLoader.search_data(values, norm_coords, 'vn', 'float')
                     elif values[0] == 'f':
-                        for value in values[1:]:
+                        for value in values[1:4]:
                             val = value.split('/')
                             ObjLoader.search_data(val, all_indices, 'f', 'int')
                             indices.append(int(val[0])-1)
