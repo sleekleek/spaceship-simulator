@@ -3,6 +3,7 @@ import pyrr
 from glfw import *
 from OpenGL.GL import *
 
+import numpy as np
 from camera import Camera
 from objLoader import ObjLoader
 from textureMapper import TextureMapper
@@ -21,11 +22,14 @@ layout(location = 2) in vec3 a_normal;
 uniform mat4 model;
 uniform mat4 projection;
 uniform mat4 view;
+uniform mat4 light;
 
 out vec2 v_texture;
+out vec3 fragNormal;
 
 void main()
 {
+    fragNormal = (light * vec4(a_normal, 0.0f)).xyz;
     gl_Position = projection * view * model * vec4(a_position, 1.0);
     v_texture = a_texture;
 }
@@ -35,6 +39,7 @@ FRAGMENT_SRC = """
 # version 330
 
 in vec2 v_texture;
+in vec3 fragNormal;
 
 out vec4 out_color;
 
@@ -42,7 +47,15 @@ uniform sampler2D s_texture;
 
 void main()
 {
-    out_color = texture(s_texture, v_texture);
+    vec3 ambientLightIntensity = vec3(0.3f, 0.2f, 0.4f);
+    vec3 sunLightIntensity = vec3(0.9f, 0.9f, 0.9f);
+    vec3 sunLightDirection = normalize(vec3(-5.0f, 5.0f, 5.0f));
+
+    vec4 texel = texture(s_texture, v_texture);
+
+    vec3 lightIntensity = ambientLightIntensity + sunLightIntensity * max(dot(fragNormal, sunLightDirection), 0.0f);
+
+    out_color = vec4(texel.rgb * lightIntensity, texel.a);
 }
 """
 
@@ -58,18 +71,10 @@ def window_resize(window, width, height):
     projection = pyrr.matrix44.create_perspective_projection_matrix(45, width / height, 0.1, 100)
     glUniformMatrix4fv(proj_loc, 1, GL_FALSE, projection)
 
-def mouse_enter_clb(window, entered):
-    global first_mouse
-
-    if entered:
-        first_mouse = False
-    else:
-        first_mouse = True
-
 def mouse_look_clb(window, xpos, ypos):
     global lastX, lastY
 
-    if first_mouse:
+    if not look_around:
         lastX = xpos
         lastY = ypos
 
@@ -80,6 +85,15 @@ def mouse_look_clb(window, xpos, ypos):
     lastY = ypos
 
     cam.process_mouse_movement(xoffset, yoffset)
+
+def mouse_button_clb(window, button, action, mods):
+    global look_around
+
+    if button == MOUSE_BUTTON_RIGHT and action == PRESS:
+        look_around = True
+    else:
+        look_around = False
+
 
 def scroll_callback(window, xoff, yoff):
     global velocity
@@ -202,15 +216,21 @@ if not init():
 cam = Camera(boundary=pyrr.Vector3([30.0, 30.0, 30.0]))
 WIDTH, HEIGHT = 1280, 720
 lastX, lastY = WIDTH / 2, HEIGHT / 2
-first_mouse = True
+look_around = False
 left, right, forward, backward, up, down = [False for x in range(6)]
 velocity = 0.05
 
-# Creating the window
+# If we are planning to use anything above 2.1 we must at least
+# request a 3.3 core context to make this work across platforms.
 window_hint(CONTEXT_VERSION_MAJOR, 4)
 window_hint(CONTEXT_VERSION_MINOR, 1)
-window_hint(OPENGL_FORWARD_COMPAT, GL_TRUE)
 window_hint(OPENGL_PROFILE, OPENGL_CORE_PROFILE)
+window_hint(OPENGL_FORWARD_COMPAT, GL_TRUE)
+
+# 4 MSAA is a good default with wide support
+window_hint(SAMPLES, 4)
+
+# Creating the window
 window = create_window(WIDTH, HEIGHT, NAME, None, None)
 print("Window initialised!")
 
@@ -219,17 +239,21 @@ if not window:
     terminate()
     raise Exception("Error: glfw window cannot be created")
 
+# Query the actual framebuffer size so we can set the right viewport later
+# -> glViewport(0, 0, framebuffer_size[0], framebuffer_size[1])
+framebuffer_size = get_framebuffer_size(window)
+
 # Set window's position
-set_window_pos(window, 200, 200)
+set_window_pos(window, 400, 200)
 
 # Set the callback function for window resize
 set_window_size_callback(window, window_resize)
 
-# set mouse entering window callback
-set_cursor_enter_callback(window, mouse_enter_clb)
-
 # set mouse position callback
 set_cursor_pos_callback(window, mouse_look_clb)
+
+# set mouse button callback
+set_mouse_button_callback(window, mouse_button_clb)
 
 # set mouse scroll callback
 set_scroll_callback(window, scroll_callback)
@@ -238,14 +262,8 @@ set_scroll_callback(window, scroll_callback)
 set_key_callback(window, key_callback)
 
 
-# Make the context current
-make_context_current(window)
-VAO = glGenVertexArrays(1)
-glBindVertexArray(VAO)
-
 # Load 3d meshes
 planet_names = ['moon', 'sun', 'mercury', 'venus', 'earth', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune']
-planet_speed = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
 planet_indices = [None for i in range(len(planet_names))]
 planet_buffers = [None for i in range(len(planet_names))]
 
@@ -254,13 +272,28 @@ for index in range(len(planet_names)):
 
 print("Meshes loaded!")
 
-shader = OpenGL.GL.shaders.compileProgram(compileShader(
-    VERTEX_SRC, GL_VERTEX_SHADER), compileShader(FRAGMENT_SRC, GL_FRAGMENT_SHADER))
+# set each planet's rotation speed
+planet_speed = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
+
+# set each planet's size
+planet_scaling = [0.2, 1.8, 0.2, 0.5, 0.7, 0.5, 1.4, 1.1, 0.8, 0.7]
+
+
+# Make the context current
+make_context_current(window)
+
+VAO = glGenVertexArrays(1)
+glBindVertexArray(VAO)
+
+shader = compileProgram(
+    compileShader(VERTEX_SRC, GL_VERTEX_SHADER),
+    compileShader(FRAGMENT_SRC, GL_FRAGMENT_SHADER)
+)
 
 # VAO, VBO and EBO binding
 VAO = glGenVertexArrays(10)
 VBO = glGenBuffers(10)
-# EBO = glGenBuffers(10)
+#EBO = glGenBuffers(10)
 
 
 def configure_arrays(index):
@@ -272,8 +305,8 @@ def configure_arrays(index):
     glBufferData(GL_ARRAY_BUFFER, planet_buffers[index].nbytes, planet_buffers[index], GL_STATIC_DRAW)
 
     # EBO
-    # glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO[index])
-    # glBufferData(GL_ELEMENT_ARRAY_BUFFER, planet_indices[index].nbytes, planet_indices[index], GL_STATIC_DRAW)
+    #glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO[index])
+    #glBufferData(GL_ELEMENT_ARRAY_BUFFER, planet_indices[index].nbytes, planet_indices[index], GL_STATIC_DRAW)
 
     # vertices
     glEnableVertexAttribArray(0)
@@ -281,17 +314,18 @@ def configure_arrays(index):
 
     # textures
     glEnableVertexAttribArray(1)
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, planet_buffers[index].itemsize * 8, ctypes.c_void_p(12))
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, planet_buffers[index].itemsize * 8, ctypes.c_void_p(0))
 
     # normals
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, planet_buffers[index].itemsize * 8, ctypes.c_void_p(20))
     glEnableVertexAttribArray(2)
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, planet_buffers[index].itemsize * 8, ctypes.c_void_p(12))
 
 
 for index in range(len(planet_names)):
     configure_arrays(index)
 
 print("VAO, VBO binded!")
+
 
 # Map textures
 textures = glGenTextures(10)
@@ -307,19 +341,19 @@ glEnable(GL_DEPTH_TEST)
 glEnable(GL_BLEND)
 glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
-projection = pyrr.matrix44.create_perspective_projection_matrix(45, 1280 / 720, 0.1, 100)
+projection = pyrr.matrix44.create_perspective_projection_matrix(45, WIDTH / HEIGHT, 0.1, 100)
 
 # Set positions
-moon_coor = [0, 12, -18]
-sun_coor = [-20, 5, 0]
-mercury_coor = [-15, 5, 0]
-venus_coor = [-10, 5, 0]
-earth_coor = [-5, 5, 0]
-mars_coor = [0, 5, 0]
-jupiter_coor = [5, 5, 0]
-saturn_coor = [10, 5, 0]
-uranus_coor = [15, 5, 0]
-neptune_coor = [20, 5, 0]
+moon_coor = [0, 12, -24]
+sun_coor = [-20, 5, -24]
+mercury_coor = [-15, 5, -24]
+venus_coor = [-10, 5, -24]
+earth_coor = [-5, 5, -24]
+mars_coor = [0, 5, -24]
+jupiter_coor = [5, 5, -24]
+saturn_coor = [10, 5, -24]
+uranus_coor = [15, 5, -24]
+neptune_coor = [20, 5, -24]
 
 planet_translations = [moon_coor, sun_coor, mercury_coor, venus_coor, earth_coor, mars_coor, jupiter_coor, saturn_coor, uranus_coor, neptune_coor]
 planet_positions = []
@@ -334,6 +368,7 @@ view = pyrr.matrix44.create_look_at(pyrr.Vector3(
 model_loc = glGetUniformLocation(shader, "model")
 proj_loc = glGetUniformLocation(shader, "projection")
 view_loc = glGetUniformLocation(shader, "view")
+light_loc = glGetUniformLocation(shader, "light")
 
 glUniformMatrix4fv(proj_loc, 1, GL_FALSE, projection)
 glUniformMatrix4fv(view_loc, 1, GL_FALSE, view)
@@ -341,13 +376,19 @@ glUniformMatrix4fv(view_loc, 1, GL_FALSE, view)
 
 def rotate_draw(index):
     # Rotate
+    rot_x = pyrr.Matrix44.from_x_rotation(planet_speed[index] * get_time())
     rot_y = pyrr.Matrix44.from_y_rotation(planet_speed[index] * get_time())
-    model = pyrr.matrix44.multiply(rot_y, planet_positions[index])
+    rot = pyrr.matrix44.multiply(rot_y, rot_x)
+
+    scale = pyrr.Matrix44.from_scale(pyrr.Vector3([planet_scaling[index] for x in range(3)]))
+    final = pyrr.matrix44.multiply(rot, scale)
+    model = pyrr.matrix44.multiply(final, planet_positions[index])
 
     # Draw
     glBindVertexArray(VAO[index])
     glBindTexture(GL_TEXTURE_2D, textures[index])
     glUniformMatrix4fv(model_loc, 1, GL_FALSE, model)
+    glUniformMatrix4fv(light_loc, 1, GL_FALSE, model)
     glDrawArrays(GL_TRIANGLES, 0, len(planet_indices[index]))
     # glDrawElements(GL_TRIANGLES, len(planet_indices[index]), GL_UNSIGNED_INT, None)
 
