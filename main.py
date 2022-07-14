@@ -1,13 +1,14 @@
+from pyexpat import model
 import pyrr
-
 from glfw import *
 from OpenGL.GL import *
+from OpenGL.GL.shaders import compileProgram, compileShader
 
 import numpy as np
+
 from camera import Camera
 from objLoader import ObjLoader
 from textureMapper import TextureMapper
-from OpenGL.GL.shaders import compileProgram, compileShader
 
 
 NAME = 'Fly Me To The Moon'
@@ -128,6 +129,18 @@ def key_callback(window, key, scancode, action, mods):
         right = True
     elif key == KEY_D and action == RELEASE:
         right = False
+        
+    if key == glfw.KEY_F and action == glfw.PRESS:
+        TextureMapper("data/spaceship/spaceship_rough.jpeg", spaceship_texture)
+        
+    if key == glfw.KEY_G and action == glfw.PRESS:
+        TextureMapper("data/spaceship/spaceship_blue.jpeg", spaceship_texture)
+        
+    if key == glfw.KEY_H and action == glfw.PRESS:
+        TextureMapper("data/spaceship/spaceship_metal.jpeg", spaceship_texture)
+        
+    if key == glfw.KEY_J and action == glfw.PRESS:
+        TextureMapper("data/spaceship/spaceship_black.jpeg", spaceship_texture)
 
     if key == KEY_SPACE and action == PRESS:
         up = True
@@ -212,6 +225,18 @@ def move_cam(velocity):
 if not init():
     raise Exception("Error: glfw cannot be initialized")
 
+# Configure the OpenGL context.
+# If we are planning to use anything above 2.1 we must at least
+# request a 3.3 core context to make this work across platforms.
+# need these to make it work on mac
+# must place after # initialising glfw lib
+glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 3)
+glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 3)
+glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
+glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, True)
+# 4 MSAA is a good default with wide support
+glfw.window_hint(glfw.SAMPLES, 4)
+
 # initialising camera
 cam = Camera(boundary=pyrr.Vector3([100.0, 100.0, 100.0]))
 WIDTH, HEIGHT = 1280, 720
@@ -266,6 +291,30 @@ set_key_callback(window, key_callback)
 planet_names = ['moon', 'sun', 'mercury', 'venus', 'earth', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune']
 planet_indices = [None for i in range(len(planet_names))]
 planet_buffers = [None for i in range(len(planet_names))]
+
+# load plane mesh
+spaceship_indices, spaceship_buffer = ObjLoader.load_model("data/spaceship/spaceship.obj")
+spaceship_VAO = glGenVertexArrays(1)
+spaceship_VBO = glGenBuffers(1)
+
+# spaceship VAO binding
+glBindVertexArray(spaceship_VAO)
+glBindBuffer(GL_ARRAY_BUFFER, spaceship_VBO)
+glBufferData(GL_ARRAY_BUFFER, spaceship_buffer.nbytes, spaceship_buffer, GL_STATIC_DRAW)
+
+# spaceship vertices
+glEnableVertexAttribArray(0)
+glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, spaceship_buffer.itemsize * 8, ctypes.c_void_p(0))
+# spaceship textures
+glEnableVertexAttribArray(1)
+glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, spaceship_buffer.itemsize * 8, ctypes.c_void_p(12))
+# spaceship normals
+glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, spaceship_buffer.itemsize * 8, ctypes.c_void_p(20))
+glEnableVertexAttribArray(2)
+
+# spaceship texture load
+spaceship_texture = glGenTextures(1)
+TextureMapper("data/spaceship/spaceship_rough.jpeg", spaceship_texture)
 
 for index in range(len(planet_names)):
     planet_indices[index], planet_buffers[index] = ObjLoader.load_model(f'data/{planet_names[index]}/Model.obj')
@@ -342,8 +391,8 @@ glEnable(GL_DEPTH_TEST)
 glEnable(GL_BLEND)
 glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
+# spaceship_pos = pyrr.matrix44.create_from_translation(pyrr.Vector3([0, -5, -10]))
 projection = pyrr.matrix44.create_perspective_projection_matrix(45, WIDTH / HEIGHT, 0.1, 100)
-
 
 moon_coor = [6, 1, -6]
 sun_coor = [0, 0, 0]
@@ -401,13 +450,32 @@ def rotate_draw(index):
 # The main application loop
 while not window_should_close(window):
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-
+    
     view = cam.get_view_matrix()
     glUniformMatrix4fv(view_loc, 1, GL_FALSE, view)
 
     for index in range(len(planet_names)):
         rotate_draw(index)
+    
+    # draw spaceship
+    plane_pos = pyrr.matrix44.create_from_translation(pyrr.Vector3([1, 1, -100]))
+    scale = pyrr.matrix44.create_from_scale(pyrr.Vector3([2, 2, 2]))    
+    rotate = pyrr.matrix44.create_from_y_rotation(3.14)
+    rotate1 = pyrr.matrix44.create_from_x_rotation(0.70)
+    rotate2 = pyrr.matrix44.create_from_z_rotation(3.14)
+    identity_mat = pyrr.matrix44.create_identity()
+    pos = pyrr.matrix44.multiply(plane_pos, identity_mat) 
+    pos = pyrr.matrix44.multiply(rotate, pos) 
+    pos = pyrr.matrix44.multiply(rotate1, pos) 
+    pos = pyrr.matrix44.multiply(rotate2, pos) 
+    pos = pyrr.matrix44.multiply(scale, pos) 
 
+    glBindVertexArray(spaceship_VAO)
+    glBindTexture(GL_TEXTURE_2D, spaceship_texture)
+    glUniformMatrix4fv(view_loc, 1, GL_FALSE, identity_mat)
+    glUniformMatrix4fv(model_loc, 1, GL_FALSE, pos)
+    glDrawArrays(GL_TRIANGLES, 0, len(spaceship_indices))
+    
     # Swap front and back buffers
     swap_buffers(window)
 
