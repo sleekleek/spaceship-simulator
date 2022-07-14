@@ -130,16 +130,16 @@ def key_callback(window, key, scancode, action, mods):
     elif key == KEY_D and action == RELEASE:
         right = False
         
-    if key == glfw.KEY_F and action == glfw.PRESS:
+    if key == KEY_F and action == PRESS:
         TextureMapper("data/spaceship/spaceship_rough.jpeg", spaceship_texture)
         
-    if key == glfw.KEY_G and action == glfw.PRESS:
+    if key == KEY_G and action == PRESS:
         TextureMapper("data/spaceship/spaceship_blue.jpeg", spaceship_texture)
         
-    if key == glfw.KEY_H and action == glfw.PRESS:
+    if key == KEY_H and action == PRESS:
         TextureMapper("data/spaceship/spaceship_metal.jpeg", spaceship_texture)
         
-    if key == glfw.KEY_J and action == glfw.PRESS:
+    if key == KEY_J and action == PRESS:
         TextureMapper("data/spaceship/spaceship_black.jpeg", spaceship_texture)
 
     if key == KEY_SPACE and action == PRESS:
@@ -225,18 +225,6 @@ def move_cam(velocity):
 if not init():
     raise Exception("Error: glfw cannot be initialized")
 
-# Configure the OpenGL context.
-# If we are planning to use anything above 2.1 we must at least
-# request a 3.3 core context to make this work across platforms.
-# need these to make it work on mac
-# must place after # initialising glfw lib
-glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 3)
-glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 3)
-glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
-glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, True)
-# 4 MSAA is a good default with wide support
-glfw.window_hint(glfw.SAMPLES, 4)
-
 # initialising camera
 cam = Camera(boundary=pyrr.Vector3([100.0, 100.0, 100.0]))
 WIDTH, HEIGHT = 1280, 720
@@ -286,12 +274,13 @@ set_scroll_callback(window, scroll_callback)
 # set keyboard input callback
 set_key_callback(window, key_callback)
 
+# Make the context current
+make_context_current(window)
+VAO = glGenVertexArrays(1)
+glBindVertexArray(VAO)
 
-# Load 3d meshes
-planet_names = ['moon', 'sun', 'mercury', 'venus', 'earth', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune']
-planet_indices = [None for i in range(len(planet_names))]
-planet_buffers = [None for i in range(len(planet_names))]
 
+# Spaceship
 # load plane mesh
 spaceship_indices, spaceship_buffer = ObjLoader.load_model("data/spaceship/spaceship.obj")
 spaceship_VAO = glGenVertexArrays(1)
@@ -316,24 +305,23 @@ glEnableVertexAttribArray(2)
 spaceship_texture = glGenTextures(1)
 TextureMapper("data/spaceship/spaceship_rough.jpeg", spaceship_texture)
 
+
+# Load 3d meshes
+planet_names = ['moon', 'sun', 'mercury', 'venus', 'earth', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune']
+planet_indices = [None for i in range(len(planet_names))]
+planet_buffers = [None for i in range(len(planet_names))]
+
 for index in range(len(planet_names)):
     planet_indices[index], planet_buffers[index] = ObjLoader.load_model(f'data/{planet_names[index]}/Model.obj')
 
 print("Meshes loaded!")
 
 # set each planet's rotation speed
-planet1_speed = [0.1, 0.1, 0.07, 0.02, 0.09, 0.08, 0.2, 0.15, 0.095, 0.1] #planet rotation
-planet_speed = [0.1, 0, 0.6, 0.5, 0.4, 0.35, 0.1, 0.2, 0.15, 0.1] #planet oribit
+planet_rotate = [0.1, 0.1, 0.07, 0.02, 0.09, 0.08, 0.2, 0.15, 0.095, 0.1] # planet rotation
+planet_orbit = [0.1, 0, 0.6, 0.5, 0.4, 0.35, 0.1, 0.2, 0.15, 0.1] # planet orbit
 
 # set each planet's size
 planet_scaling = [0.1, 1.4, 0.3, 0.5, 0.7, 0.5, 0.9, 0.8, 0.7, 0.4]
-
-
-# Make the context current
-make_context_current(window)
-
-VAO = glGenVertexArrays(1)
-glBindVertexArray(VAO)
 
 shader = compileProgram(
     compileShader(VERTEX_SRC, GL_VERTEX_SHADER),
@@ -385,6 +373,7 @@ for index in range(len(planet_names)):
 
 print("Textures mapped!")
 
+
 glUseProgram(shader)
 #glClearColor(0, 0, 0, 1)    # Background colour
 glEnable(GL_DEPTH_TEST)
@@ -426,18 +415,16 @@ glUniformMatrix4fv(view_loc, 1, GL_FALSE, view)
 
 def rotate_draw(index):
     # Rotate
-    #rot_x = pyrr.Matrix44.from_x_rotation(planet_speed[index] * get_time())
-    rot_y = pyrr.Matrix44.from_y_rotation(planet_speed[index] * get_time())
+    #rot_x = pyrr.Matrix44.from_x_rotation(planet_orbit[index] * get_time())
+    rot_y = pyrr.Matrix44.from_y_rotation(planet_orbit[index] * get_time())
     #rot = pyrr.matrix44.multiply(rot_y, rot_x)
-    rot1_y = pyrr.Matrix44.from_y_rotation(planet1_speed[index] * get_time()) 
+    rot1_y = pyrr.Matrix44.from_y_rotation(planet_rotate[index] * get_time()) 
     
     scale = pyrr.Matrix44.from_scale(pyrr.Vector3([planet_scaling[index] for x in range(3)]))
     rotate = pyrr.matrix44.multiply(rot1_y, scale) #rotate
     final = pyrr.matrix44.multiply(planet_positions[index], rotate) #translate
     model = pyrr.matrix44.multiply(final, rot_y) #rotate
     
-
-
     # Draw
     glBindVertexArray(VAO[index])
     glBindTexture(GL_TEXTURE_2D, textures[index])
