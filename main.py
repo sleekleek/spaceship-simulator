@@ -1,13 +1,14 @@
+from pyexpat import model
 import pyrr
-
 from glfw import *
 from OpenGL.GL import *
+from OpenGL.GL.shaders import compileProgram, compileShader
 
 import numpy as np
+
 from camera import Camera
 from objLoader import ObjLoader
 from textureMapper import TextureMapper
-from OpenGL.GL.shaders import compileProgram, compileShader
 
 
 NAME = 'Fly Me To The Moon'
@@ -88,11 +89,19 @@ def mouse_look_clb(window, xpos, ypos):
 
 def mouse_button_clb(window, button, action, mods):
     global look_around
+    global spaceship_texturemap_pointer
 
+    # Toggle look_around on right mouse button
     if button == MOUSE_BUTTON_RIGHT and action == PRESS:
         look_around = True
     else:
         look_around = False
+
+    # Switch between texture maps on spaceship on left mouse button
+    if button == MOUSE_BUTTON_LEFT and action == PRESS:
+        print(f"Changing spaceship texture..{spaceship_texturemap_pointer}")
+        TextureMapper(spaceship_texturemaps[spaceship_texturemap_pointer], spaceship_texture)
+        spaceship_texturemap_pointer = spaceship_texturemap_pointer + 1 if spaceship_texturemap_pointer < (len(spaceship_texturemaps) - 1) else 0
 
 
 def scroll_callback(window, xoff, yoff):
@@ -261,7 +270,48 @@ set_scroll_callback(window, scroll_callback)
 # set keyboard input callback
 set_key_callback(window, key_callback)
 
+# Make the context current
+make_context_current(window)
+VAO = glGenVertexArrays(1)
+glBindVertexArray(VAO)
 
+
+# Spaceship
+# load plane mesh
+spaceship_indices, spaceship_buffer = ObjLoader.load_model("data/spaceship/spaceship.obj")
+print("Spaceship mesh loaded!")
+
+# spaceship VAO binding
+spaceship_VAO = glGenVertexArrays(1)
+spaceship_VBO = glGenBuffers(1)
+
+glBindVertexArray(spaceship_VAO)
+glBindBuffer(GL_ARRAY_BUFFER, spaceship_VBO)
+glBufferData(GL_ARRAY_BUFFER, spaceship_buffer.nbytes, spaceship_buffer, GL_STATIC_DRAW)
+
+# spaceship vertices
+glEnableVertexAttribArray(0)
+glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, spaceship_buffer.itemsize * 8, ctypes.c_void_p(0))
+# spaceship textures
+glEnableVertexAttribArray(1)
+glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, spaceship_buffer.itemsize * 8, ctypes.c_void_p(12))
+# spaceship normals
+glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, spaceship_buffer.itemsize * 8, ctypes.c_void_p(20))
+glEnableVertexAttribArray(2)
+
+print("Spaceship VAO, VBO binded!")
+
+# spaceship texture load
+spaceship_texturemaps = ["data/spaceship/spaceship_rough.jpeg", "data/spaceship/spaceship_blue.jpeg", "data/spaceship/spaceship_metal.jpeg", "data/spaceship/spaceship_black.jpeg"] 
+spaceship_texturemap_pointer = 0
+
+spaceship_texture = glGenTextures(1)
+TextureMapper(spaceship_texturemaps[spaceship_texturemap_pointer], spaceship_texture)
+spaceship_texturemap_pointer += 1
+print("Spaceship textures mapped!")
+
+
+# Planets
 # Load 3d meshes
 planet_names = ['moon', 'sun', 'mercury', 'venus', 'earth', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune']
 planet_indices = [None for i in range(len(planet_names))]
@@ -270,7 +320,7 @@ planet_buffers = [None for i in range(len(planet_names))]
 for index in range(len(planet_names)):
     planet_indices[index], planet_buffers[index] = ObjLoader.load_model(f'data/{planet_names[index]}/Model.obj')
 
-print("Meshes loaded!")
+print("Planet meshes loaded!")
 
 # set each planet's rotation speed
 planet1_speed = [0.1, 0.1, 0.07, 0.02, 0.09, 0.08, 0.2, 0.15, 0.095, 0.1] #planet rotation
@@ -278,13 +328,6 @@ planet_speed = [0.4, 0, 0.6, 0.5, 0.4, 0.35, 0.1, 0.2, 0.15, 0.1] #planet oribit
 
 # set each planet's size
 planet_scaling = [0.1, 1.4, 0.3, 0.5, 0.7, 0.5, 0.9, 0.8, 0.7, 0.4]
-
-
-# Make the context current
-make_context_current(window)
-
-VAO = glGenVertexArrays(1)
-glBindVertexArray(VAO)
 
 shader = compileProgram(
     compileShader(VERTEX_SRC, GL_VERTEX_SHADER),
@@ -324,7 +367,7 @@ def configure_arrays(index):
 for index in range(len(planet_names)):
     configure_arrays(index)
 
-print("VAO, VBO binded!")
+print("Planet VAO, VBO binded!")
 
 
 # Map textures
@@ -333,7 +376,8 @@ textures = glGenTextures(10)
 for index in range(len(planet_names)):
     TextureMapper(f'data/{planet_names[index]}/Texture.jpg', textures[index])
 
-print("Textures mapped!")
+print("Planet textures mapped!")
+
 
 glUseProgram(shader)
 #glClearColor(0, 0, 0, 1)    # Background colour
@@ -341,6 +385,7 @@ glEnable(GL_DEPTH_TEST)
 glEnable(GL_BLEND)
 glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
+# spaceship_pos = pyrr.matrix44.create_from_translation(pyrr.Vector3([0, -5, -10]))
 projection = pyrr.matrix44.create_perspective_projection_matrix(45, WIDTH / HEIGHT, 0.1, 100)
 
 
@@ -376,18 +421,16 @@ glUniformMatrix4fv(view_loc, 1, GL_FALSE, view)
 
 def rotate_draw(index):
     # Rotate
-    #rot_x = pyrr.Matrix44.from_x_rotation(planet_speed[index] * get_time())
-    rot_y = pyrr.Matrix44.from_y_rotation(planet_speed[index] * get_time())
+    #rot_x = pyrr.Matrix44.from_x_rotation(planet_orbit[index] * get_time())
+    rot_y = pyrr.Matrix44.from_y_rotation(planet_orbit[index] * get_time())
     #rot = pyrr.matrix44.multiply(rot_y, rot_x)
-    rot1_y = pyrr.Matrix44.from_y_rotation(planet1_speed[index] * get_time()) 
+    rot1_y = pyrr.Matrix44.from_y_rotation(planet_rotate[index] * get_time()) 
     
     scale = pyrr.Matrix44.from_scale(pyrr.Vector3([planet_scaling[index] for x in range(3)]))
     rotate = pyrr.matrix44.multiply(rot1_y, scale) #rotate
     final = pyrr.matrix44.multiply(planet_positions[index], rotate) #translate
     model = pyrr.matrix44.multiply(final, rot_y) #rotate
     
-
-
     # Draw
     glBindVertexArray(VAO[index])
     glBindTexture(GL_TEXTURE_2D, textures[index])
@@ -400,13 +443,32 @@ def rotate_draw(index):
 # The main application loop
 while not window_should_close(window):
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-
+    
     view = cam.get_view_matrix()
     glUniformMatrix4fv(view_loc, 1, GL_FALSE, view)
 
     for index in range(len(planet_names)):
         rotate_draw(index)
+    
+    # draw spaceship
+    plane_pos = pyrr.matrix44.create_from_translation(pyrr.Vector3([1, 1, -100]))
+    scale = pyrr.matrix44.create_from_scale(pyrr.Vector3([2, 2, 2]))    
+    rotate = pyrr.matrix44.create_from_y_rotation(3.14)
+    rotate1 = pyrr.matrix44.create_from_x_rotation(0.70)
+    rotate2 = pyrr.matrix44.create_from_z_rotation(3.14)
+    identity_mat = pyrr.matrix44.create_identity()
+    pos = pyrr.matrix44.multiply(plane_pos, identity_mat) 
+    pos = pyrr.matrix44.multiply(rotate, pos) 
+    pos = pyrr.matrix44.multiply(rotate1, pos) 
+    pos = pyrr.matrix44.multiply(rotate2, pos) 
+    pos = pyrr.matrix44.multiply(scale, pos) 
 
+    glBindVertexArray(spaceship_VAO)
+    glBindTexture(GL_TEXTURE_2D, spaceship_texture)
+    glUniformMatrix4fv(view_loc, 1, GL_FALSE, identity_mat)
+    glUniformMatrix4fv(model_loc, 1, GL_FALSE, pos)
+    glDrawArrays(GL_TRIANGLES, 0, len(spaceship_indices))
+    
     # Swap front and back buffers
     swap_buffers(window)
 
