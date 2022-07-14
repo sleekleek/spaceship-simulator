@@ -274,7 +274,7 @@ print("Meshes loaded!")
 
 # set each planet's rotation speed
 planet1_speed = [0.1, 0.1, 0.07, 0.02, 0.09, 0.08, 0.2, 0.15, 0.095, 0.1] #planet rotation
-planet_speed = [0.1, 0, 0.6, 0.5, 0.4, 0.35, 0.1, 0.2, 0.15, 0.1] #planet oribit
+planet_speed = [0.4, 0, 0.6, 0.5, 0.4, 0.35, 0.1, 0.2, 0.15, 0.1] #planet oribit
 
 # set each planet's size
 planet_scaling = [0.1, 1.4, 0.3, 0.5, 0.7, 0.5, 0.9, 0.8, 0.7, 0.4]
@@ -315,12 +315,11 @@ def configure_arrays(index):
 
     # textures
     glEnableVertexAttribArray(1)
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, planet_buffers[index].itemsize * 8, ctypes.c_void_p(0))
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, planet_buffers[index].itemsize * 8, ctypes.c_void_p(12))
 
     # normals
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, planet_buffers[index].itemsize * 8, ctypes.c_void_p(20))
     glEnableVertexAttribArray(2)
-    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, planet_buffers[index].itemsize * 8, ctypes.c_void_p(12))
-
 
 for index in range(len(planet_names)):
     configure_arrays(index)
@@ -345,7 +344,7 @@ glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 projection = pyrr.matrix44.create_perspective_projection_matrix(45, WIDTH / HEIGHT, 0.1, 100)
 
 
-moon_coor = [6, 1, -6]
+moon_coor = [50, 1, -50]
 sun_coor = [0, 0, 0]
 mercury_coor = [10, 0, -10]
 venus_coor = [12, 0, -12]
