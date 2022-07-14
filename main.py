@@ -89,11 +89,19 @@ def mouse_look_clb(window, xpos, ypos):
 
 def mouse_button_clb(window, button, action, mods):
     global look_around
+    global spaceship_texturemap_pointer
 
+    # Toggle look_around on right mouse button
     if button == MOUSE_BUTTON_RIGHT and action == PRESS:
         look_around = True
     else:
         look_around = False
+
+    # Switch between texture maps on spaceship on left mouse button
+    if button == MOUSE_BUTTON_LEFT and action == PRESS:
+        print(f"Changing spaceship texture..{spaceship_texturemap_pointer}")
+        TextureMapper(spaceship_texturemaps[spaceship_texturemap_pointer], spaceship_texture)
+        spaceship_texturemap_pointer = spaceship_texturemap_pointer + 1 if spaceship_texturemap_pointer < (len(spaceship_texturemaps) - 1) else 0
 
 
 def scroll_callback(window, xoff, yoff):
@@ -129,18 +137,6 @@ def key_callback(window, key, scancode, action, mods):
         right = True
     elif key == KEY_D and action == RELEASE:
         right = False
-        
-    if key == KEY_F and action == PRESS:
-        TextureMapper("data/spaceship/spaceship_rough.jpeg", spaceship_texture)
-        
-    if key == KEY_G and action == PRESS:
-        TextureMapper("data/spaceship/spaceship_blue.jpeg", spaceship_texture)
-        
-    if key == KEY_H and action == PRESS:
-        TextureMapper("data/spaceship/spaceship_metal.jpeg", spaceship_texture)
-        
-    if key == KEY_J and action == PRESS:
-        TextureMapper("data/spaceship/spaceship_black.jpeg", spaceship_texture)
 
     if key == KEY_SPACE and action == PRESS:
         up = True
@@ -283,10 +279,12 @@ glBindVertexArray(VAO)
 # Spaceship
 # load plane mesh
 spaceship_indices, spaceship_buffer = ObjLoader.load_model("data/spaceship/spaceship.obj")
+print("Spaceship mesh loaded!")
+
+# spaceship VAO binding
 spaceship_VAO = glGenVertexArrays(1)
 spaceship_VBO = glGenBuffers(1)
 
-# spaceship VAO binding
 glBindVertexArray(spaceship_VAO)
 glBindBuffer(GL_ARRAY_BUFFER, spaceship_VBO)
 glBufferData(GL_ARRAY_BUFFER, spaceship_buffer.nbytes, spaceship_buffer, GL_STATIC_DRAW)
@@ -301,11 +299,19 @@ glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, spaceship_buffer.itemsize * 8, c
 glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, spaceship_buffer.itemsize * 8, ctypes.c_void_p(20))
 glEnableVertexAttribArray(2)
 
+print("Spaceship VAO, VBO binded!")
+
 # spaceship texture load
+spaceship_texturemaps = ["data/spaceship/spaceship_rough.jpeg", "data/spaceship/spaceship_blue.jpeg", "data/spaceship/spaceship_metal.jpeg", "data/spaceship/spaceship_black.jpeg"] 
+spaceship_texturemap_pointer = 0
+
 spaceship_texture = glGenTextures(1)
-TextureMapper("data/spaceship/spaceship_rough.jpeg", spaceship_texture)
+TextureMapper(spaceship_texturemaps[spaceship_texturemap_pointer], spaceship_texture)
+spaceship_texturemap_pointer += 1
+print("Spaceship textures mapped!")
 
 
+# Planets
 # Load 3d meshes
 planet_names = ['moon', 'sun', 'mercury', 'venus', 'earth', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune']
 planet_indices = [None for i in range(len(planet_names))]
@@ -314,7 +320,7 @@ planet_buffers = [None for i in range(len(planet_names))]
 for index in range(len(planet_names)):
     planet_indices[index], planet_buffers[index] = ObjLoader.load_model(f'data/{planet_names[index]}/Model.obj')
 
-print("Meshes loaded!")
+print("Planet meshes loaded!")
 
 # set each planet's rotation speed
 planet_rotate = [0.1, 0.1, 0.07, 0.02, 0.09, 0.08, 0.2, 0.15, 0.095, 0.1] # planet rotation
@@ -362,7 +368,7 @@ def configure_arrays(index):
 for index in range(len(planet_names)):
     configure_arrays(index)
 
-print("VAO, VBO binded!")
+print("Planet VAO, VBO binded!")
 
 
 # Map textures
@@ -371,7 +377,7 @@ textures = glGenTextures(10)
 for index in range(len(planet_names)):
     TextureMapper(f'data/{planet_names[index]}/Texture.jpg', textures[index])
 
-print("Textures mapped!")
+print("Planet textures mapped!")
 
 
 glUseProgram(shader)
