@@ -422,9 +422,9 @@ glUniformMatrix4fv(view_loc, 1, GL_FALSE, view)
 def rotate_draw(index):
     # Rotate
     #rot_x = pyrr.Matrix44.from_x_rotation(planet_orbit[index] * get_time())
-    rot_y = pyrr.Matrix44.from_y_rotation(planet_orbit[index] * get_time())
+    rot_y = pyrr.Matrix44.from_y_rotation(planet_speed[index] * get_time())
     #rot = pyrr.matrix44.multiply(rot_y, rot_x)
-    rot1_y = pyrr.Matrix44.from_y_rotation(planet_rotate[index] * get_time()) 
+    rot1_y = pyrr.Matrix44.from_y_rotation(planet1_speed[index] * get_time()) 
     
     scale = pyrr.Matrix44.from_scale(pyrr.Vector3([planet_scaling[index] for x in range(3)]))
     rotate = pyrr.matrix44.multiply(rot1_y, scale) #rotate
