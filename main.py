@@ -25,38 +25,51 @@ uniform mat4 projection;
 uniform mat4 view;
 uniform mat4 light;
 
+out vec3 vposition;
 out vec2 v_texture;
 out vec3 fragNormal;
 
 void main()
 {
-    fragNormal = (light * vec4(a_normal, 0.0f)).xyz;
-    gl_Position = projection * view * model * vec4(a_position, 1.0);
+    
     v_texture = a_texture;
+    vposition = a_position;
+    fragNormal = a_normal;
+    gl_Position = projection * view * model * vec4(a_position, 1.0);
+
 }
 """
 
 FRAGMENT_SRC = """
 # version 330
 
+uniform mat4 model;
+uniform sampler2D s_texture;
+
 in vec2 v_texture;
 in vec3 fragNormal;
+in vec3 vposition;
 
 out vec4 out_color;
 
-uniform sampler2D s_texture;
-
 void main()
 {
-    vec3 ambientLightIntensity = vec3(0.3f, 0.2f, 0.4f);
-    vec3 sunLightIntensity = vec3(0.9f, 0.9f, 0.9f);
-    vec3 sunLightDirection = normalize(vec3(-5.0f, 5.0f, 5.0f));
 
-    vec4 texel = texture(s_texture, v_texture);
+    vec3 gLightIntensities = vec3(5.0f, 5.0f, 5.0f);
+    vec3 gLightPosition = vec3(0.0f, 0.0f, 0.0f);
 
-    vec3 lightIntensity = ambientLightIntensity + sunLightIntensity * max(dot(fragNormal, sunLightDirection), 0.0f);
+    mat3 normalMatrix = transpose(inverse(mat3(model)));
+    vec3 normal = normalize(normalMatrix * fragNormal);
 
-    out_color = vec4(texel.rgb * lightIntensity, texel.a);
+    vec3 fragPosition = vec3(model * vec4(vposition, 1));
+
+    vec3 surfaceToLight = gLightPosition - fragPosition;
+
+    float brightness = dot(normal, surfaceToLight) / (length(surfaceToLight) * length(normal));
+    brightness = clamp(brightness, 0.2, 1);
+
+    vec4 surfaceColor = texture(s_texture, v_texture);
+    out_color = vec4(brightness *  gLightIntensities * surfaceColor.rgb, surfaceColor.a);
 }
 """
 
@@ -323,8 +336,8 @@ for index in range(len(planet_names)):
 print("Planet meshes loaded!")
 
 # set each planet's rotation speed
-planet1_speed = [0.1, 0.1, 0.07, 0.02, 0.09, 0.08, 0.2, 0.15, 0.095, 0.1] #planet rotation
-planet_speed = [0.4, 0, 0.6, 0.5, 0.4, 0.35, 0.1, 0.2, 0.15, 0.1] #planet oribit
+planet_orbit = [0.1, 0.1, 0.07, 0.02, 0.09, 0.08, 0.2, 0.15, 0.095, 0.1] #planet rotation
+planet_rotate = [0.4, 0, 0.6, 0.5, 0.4, 0.35, 0.1, 0.2, 0.15, 0.1] #planet oribit
 
 # set each planet's size
 planet_scaling = [0.1, 1.4, 0.3, 0.5, 0.7, 0.5, 0.9, 0.8, 0.7, 0.4]
@@ -379,14 +392,14 @@ for index in range(len(planet_names)):
 print("Planet textures mapped!")
 
 
-glUseProgram(shader)
+
 #glClearColor(0, 0, 0, 1)    # Background colour
+
+glUseProgram(shader);
+
 glEnable(GL_DEPTH_TEST)
 glEnable(GL_BLEND)
 glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-
-# spaceship_pos = pyrr.matrix44.create_from_translation(pyrr.Vector3([0, -5, -10]))
-projection = pyrr.matrix44.create_perspective_projection_matrix(45, WIDTH / HEIGHT, 0.1, 100)
 
 
 moon_coor = [50, 1, -50]
@@ -406,6 +419,9 @@ planet_positions = []
 for index in range(len(planet_names)):
     planet_positions.append(pyrr.matrix44.create_from_translation(pyrr.Vector3(planet_translations[index])))
 
+
+# spaceship_pos = pyrr.matrix44.create_from_translation(pyrr.Vector3([0, -5, -10]))
+projection = pyrr.matrix44.create_perspective_projection_matrix(45, WIDTH / HEIGHT, 0.1, 100)
 # Eye, target, up
 view = pyrr.matrix44.create_look_at(pyrr.Vector3(
     [0, 0, 8]), pyrr.Vector3([0, 0, 0]), pyrr.Vector3([0, 1, 0]))
@@ -417,6 +433,7 @@ light_loc = glGetUniformLocation(shader, "light")
 
 glUniformMatrix4fv(proj_loc, 1, GL_FALSE, projection)
 glUniformMatrix4fv(view_loc, 1, GL_FALSE, view)
+
 
 
 def rotate_draw(index):
@@ -449,6 +466,8 @@ while not window_should_close(window):
 
     for index in range(len(planet_names)):
         rotate_draw(index)
+
+        
     
     # draw spaceship
     plane_pos = pyrr.matrix44.create_from_translation(pyrr.Vector3([1, 1, -100]))
@@ -468,6 +487,7 @@ while not window_should_close(window):
     glUniformMatrix4fv(view_loc, 1, GL_FALSE, identity_mat)
     glUniformMatrix4fv(model_loc, 1, GL_FALSE, pos)
     glDrawArrays(GL_TRIANGLES, 0, len(spaceship_indices))
+    
     
     # Swap front and back buffers
     swap_buffers(window)
