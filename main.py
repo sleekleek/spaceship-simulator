@@ -336,8 +336,8 @@ for index in range(len(planet_names)):
 print("Planet meshes loaded!")
 
 # set each planet's rotation speed
-planet_orbit = [0.1, 0.1, 0.07, 0.02, 0.09, 0.08, 0.2, 0.15, 0.095, 0.1] #planet rotation
-planet_rotate = [0.4, 0, 0.6, 0.5, 0.4, 0.35, 0.1, 0.2, 0.15, 0.1] #planet oribit
+planet_rotation = [0.1, 0.1, 0.07, 0.02, 0.09, 0.08, 0.2, 0.15, 0.095, 0.1] #planet rotation
+planet_orbit = [0.4, 0, 0.6, 0.5, 0.4, 0.35, 0.1, 0.2, 0.15, 0.1] #planet orbit
 
 # set each planet's size
 planet_scaling = [0.1, 1.4, 0.3, 0.5, 0.7, 0.5, 0.9, 0.8, 0.7, 0.4]
@@ -439,9 +439,9 @@ glUniformMatrix4fv(view_loc, 1, GL_FALSE, view)
 def rotate_draw(index):
     # Rotate
     #rot_x = pyrr.Matrix44.from_x_rotation(planet_orbit[index] * get_time())
-    rot_y = pyrr.Matrix44.from_y_rotation(planet_speed[index] * get_time())
+    rot_y = pyrr.Matrix44.from_y_rotation(planet_orbit[index] * get_time())
     #rot = pyrr.matrix44.multiply(rot_y, rot_x)
-    rot1_y = pyrr.Matrix44.from_y_rotation(planet1_speed[index] * get_time()) 
+    rot1_y = pyrr.Matrix44.from_y_rotation(planet_rotation[index] * get_time()) 
     
     scale = pyrr.Matrix44.from_scale(pyrr.Vector3([planet_scaling[index] for x in range(3)]))
     rotate = pyrr.matrix44.multiply(rot1_y, scale) #rotate
