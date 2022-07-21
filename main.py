@@ -290,7 +290,8 @@ glBindVertexArray(VAO)
 
 # Spaceship
 # load plane mesh
-spaceship_indices, spaceship_buffer = ObjLoader.load_model("data/spaceship/spaceship.obj")
+obj = ObjLoader()
+spaceship_indices, spaceship_buffer = obj.load_model("data/spaceship/spaceship.obj")
 print("Spaceship mesh loaded!")
 
 # spaceship VAO binding
@@ -315,11 +316,10 @@ print("Spaceship VAO, VBO binded!")
 
 # spaceship texture load
 spaceship_texturemaps = ["data/spaceship/spaceship_rough.jpeg", "data/spaceship/spaceship_blue.jpeg", "data/spaceship/spaceship_metal.jpeg", "data/spaceship/spaceship_black.jpeg"] 
-spaceship_texturemap_pointer = 0
-
 spaceship_texture = glGenTextures(1)
-TextureMapper(spaceship_texturemaps[spaceship_texturemap_pointer], spaceship_texture)
-spaceship_texturemap_pointer += 1
+spaceship_texturemap_pointer = 1
+
+TextureMapper(spaceship_texturemaps[0], spaceship_texture)
 print("Spaceship textures mapped!")
 
 
@@ -330,13 +330,14 @@ planet_indices = [None for i in range(len(planet_names))]
 planet_buffers = [None for i in range(len(planet_names))]
 
 for index in range(len(planet_names)):
-    planet_indices[index], planet_buffers[index] = ObjLoader.load_model(f'data/{planet_names[index]}/Model.obj')
+    obj = ObjLoader()
+    planet_indices[index], planet_buffers[index] = obj.load_model(f'data/{planet_names[index]}/Model.obj')
 
 print("Planet meshes loaded!")
 
 # set each planet's rotation speed
-planet_rotation = [0.1, 0.1, 0.07, 0.02, 0.09, 0.08, 0.2, 0.15, 0.095, 0.1] #planet rotation
-planet_orbit = [0.4, 0, 0.6, 0.5, 0.4, 0.35, 0.1, 0.2, 0.15, 0.1] #planet orbit
+planet_rotation = [0.1, 0.1, 0.07, 0.02, 0.09, 0.08, 0.2, 0.15, 0.095, 0.1]  # planet rotation
+planet_orbit = [0.4, 0, 0.6, 0.5, 0.4, 0.35, 0.1, 0.2, 0.15, 0.1]  # planet orbit
 
 # set each planet's size
 planet_scaling = [0.1, 1.4, 0.3, 0.5, 0.7, 0.5, 0.9, 0.8, 0.7, 0.4]
@@ -357,7 +358,7 @@ def configure_arrays(index):
     glBindVertexArray(VAO[index])
 
     # VBO
-    glBindBuffer(GL_ARRAY_BUFFER, VBO[0])
+    glBindBuffer(GL_ARRAY_BUFFER, VBO[index])
     glBufferData(GL_ARRAY_BUFFER, planet_buffers[index].nbytes, planet_buffers[index], GL_STATIC_DRAW)
 
     # EBO
@@ -487,8 +488,8 @@ while not window_should_close(window):
     glUniformMatrix4fv(view_loc, 1, GL_FALSE, identity_mat)
     glUniformMatrix4fv(model_loc, 1, GL_FALSE, pos)
     glDrawArrays(GL_TRIANGLES, 0, len(spaceship_indices))
-    
-    
+
+
     # Swap front and back buffers
     swap_buffers(window)
 

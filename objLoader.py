@@ -4,16 +4,6 @@ import numpy as np
 class ObjLoader:
     buffer = []
 
-    @staticmethod
-    def search_data(data_values, coordinates, skip, data_type):
-        for d in data_values:
-            if d == skip:
-                continue
-            if data_type == 'float':
-                coordinates.append(float(d))
-            elif data_type == 'int':
-                coordinates.append(int(d)-1)
-
     @staticmethod  # Sorted vertex buffer for use with glDrawArrays function
     def create_sorted_vertex_buffer(indices_data, vertices, textures, normals):
         for i, ind in enumerate(indices_data):
@@ -59,16 +49,26 @@ class ObjLoader:
             print(buffer[start:end])
 
     @staticmethod
-    def load_model(file, sorted=True):
-        vert_coords = [] 
-        tex_coords = [] 
-        norm_coords = []  
+    def search_data(data_values, coordinates, skip, data_type):
+        for d in data_values:
+            if d == skip:
+                continue
+            if data_type == 'float':
+                coordinates.append(float(d))
+            elif data_type == 'int':
+                coordinates.append(int(d)-1)
 
-        all_indices = [] 
-        indices = [] 
+    @staticmethod
+    def load_model(file, isSorted=True):
+        vert_coords = []
+        tex_coords = []
+        norm_coords = []
 
-        with open(file, 'r') as f:
-            line = f.readline()
+        all_indices = []
+        indices = []
+
+        with open(file, 'r') as infile:
+            line = infile.readline()
             while line:
                 values = line.split()
                 if len(values) > 1:
@@ -83,14 +83,10 @@ class ObjLoader:
                             val = value.split('/')
                             ObjLoader.search_data(val, all_indices, 'f', 'int')
                             indices.append(int(val[0])-1)
-                    else:
-                        pass
-                else:
-                    pass
 
-                line = f.readline()
+                line = infile.readline()
 
-        if sorted:
+        if isSorted:
             # use with glDrawArrays
             ObjLoader.create_sorted_vertex_buffer(
                 all_indices, vert_coords, tex_coords, norm_coords)
