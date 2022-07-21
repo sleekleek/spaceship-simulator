@@ -1,14 +1,13 @@
-from pyexpat import model
 import pyrr
+
 from glfw import *
 from OpenGL.GL import *
-from OpenGL.GL.shaders import compileProgram, compileShader
-
-import numpy as np
 
 from camera import Camera
+from pyexpat import model
 from objLoader import ObjLoader
 from textureMapper import TextureMapper
+from OpenGL.GL.shaders import compileProgram, compileShader
 
 
 NAME = 'Fly Me To The Moon'
@@ -240,7 +239,7 @@ WIDTH, HEIGHT = 1280, 720
 lastX, lastY = WIDTH / 2, HEIGHT / 2
 look_around = False
 left, right, forward, backward, up, down = [False for x in range(6)]
-velocity = 0.05
+velocity = 0.1
 
 # If we are planning to use anything above 2.1 we must at least
 # request a 3.3 core context to make this work across platforms.
@@ -455,6 +454,7 @@ def rotate_draw(index):
     glUniformMatrix4fv(light_loc, 1, GL_FALSE, model)
     glDrawArrays(GL_TRIANGLES, 0, len(planet_indices[index]))
     # glDrawElements(GL_TRIANGLES, len(planet_indices[index]), GL_UNSIGNED_INT, None)
+
 
 
 # The main application loop
