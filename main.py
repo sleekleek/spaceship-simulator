@@ -337,10 +337,10 @@ print("Planet meshes loaded!")
 
 # set each planet's rotation speed
 planet_rotation = [0.1, 0.1, 0.07, 0.02, 0.09, 0.08, 0.2, 0.15, 0.095, 0.1]  # planet rotation
-planet_orbit = [0.4, 0, 0.6, 0.5, 0.4, 0.35, 0.1, 0.2, 0.15, 0.1]  # planet orbit
+planet_orbit = [0.2, 0, 0.3, 0.25, 0.2, 0.17, 0.05, 0.1, 0.2, 0.05]  # planet orbit
 
 # set each planet's size
-planet_scaling = [0.1, 1.4, 0.3, 0.5, 0.7, 0.5, 0.9, 0.8, 0.7, 0.4]
+planet_scaling = [0.1, 2.5, 0.3, 0.6, 0.7, 0.5, 1.5, 1.4, 1.2, 1.0]
 
 shader = compileProgram(
     compileShader(VERTEX_SRC, GL_VERTEX_SHADER),
@@ -402,16 +402,16 @@ glEnable(GL_BLEND)
 glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
 
-moon_coor = [50, 1, -50]
+moon_coor = [60, 1, -50]
 sun_coor = [0, 0, 0]
 mercury_coor = [10, 0, -10]
-venus_coor = [12, 0, -12]
+venus_coor = [10, 0, -10]
 earth_coor = [12, 0, -12]
-mars_coor = [20, 0, -20]
-jupiter_coor = [18, 0, -18]
-saturn_coor = [24, 0, -24]
-uranus_coor = [40, 0, -40]
-neptune_coor = [65, 0, -65]
+mars_coor = [18, 0, -18]
+jupiter_coor = [12, 0, -12]
+saturn_coor = [18, 0, -18]
+uranus_coor = [30, 0, -30]
+neptune_coor = [50, 0, -50]
 
 planet_translations = [moon_coor, sun_coor, mercury_coor, venus_coor, earth_coor, mars_coor, jupiter_coor, saturn_coor, uranus_coor, neptune_coor]
 planet_positions = []
