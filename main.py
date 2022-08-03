@@ -121,7 +121,7 @@ def scroll_callback(window, xoff, yoff):
 
     if yoff == 1:
         velocity += 0.01
-    if yoff == -1:
+    if yoff == -1 and velocity > 0.02:
         velocity -= 0.01
 
 def key_callback(window, key, scancode, action, mods):
@@ -213,20 +213,29 @@ def process_gamepad_input(gamepad_state):
         up = False
 
 
-# move camera view, called in the main loop
+# move camera view and rotate spaceship, called in the main loop
 def move_cam(velocity):
+    plane_rotate_fb = 2.8
+    plane_rotate_lr = 0
+
     if left:
         cam.process_keyboard("LEFT", velocity)
+        plane_rotate_lr = 1
     if right:
         cam.process_keyboard("RIGHT", velocity)
+        plane_rotate_lr = -1
     if forward:
         cam.process_keyboard("FORWARD", velocity)
+        plane_rotate_fb = 3
     if backward:
         cam.process_keyboard("BACKWARD", velocity)
+        plane_rotate_fb = 2.6
     if up:
         cam.process_keyboard("UP", velocity)
     if down:
         cam.process_keyboard("DOWN", velocity)
+
+    return plane_rotate_fb, plane_rotate_lr
 
 
 # Initializing glfw library
@@ -464,22 +473,26 @@ while not window_should_close(window):
     view = cam.get_view_matrix()
     glUniformMatrix4fv(view_loc, 1, GL_FALSE, view)
 
+    process_gamepad_input(get_gamepad_state(0))
+
+    plane_rotate_fb, plane_rotate_lr = move_cam(velocity)
+
     for index in range(len(planet_names)):
         rotate_draw(index)
 
         
-    
     # draw spaceship
-    plane_pos = pyrr.matrix44.create_from_translation(pyrr.Vector3([1, 1, -100]))
-    scale = pyrr.matrix44.create_from_scale(pyrr.Vector3([2, 2, 2]))    
-    rotate = pyrr.matrix44.create_from_y_rotation(3.14)
-    rotate1 = pyrr.matrix44.create_from_x_rotation(0.70)
-    rotate2 = pyrr.matrix44.create_from_z_rotation(3.14)
+    plane_pos = pyrr.matrix44.create_from_translation(pyrr.Vector3([0, -3, -9]))
+    scale = pyrr.matrix44.create_from_scale(pyrr.Vector3([0.5, 0.5, 0.5]))  
+    rotate_x = pyrr.matrix44.create_from_x_rotation(plane_rotate_fb)  
+    rotate_y = pyrr.matrix44.create_from_y_rotation(0.08 * plane_rotate_lr)
+    rotate_z = pyrr.matrix44.create_from_z_rotation(0.08 * plane_rotate_lr)
+
     identity_mat = pyrr.matrix44.create_identity()
     pos = pyrr.matrix44.multiply(plane_pos, identity_mat) 
-    pos = pyrr.matrix44.multiply(rotate, pos) 
-    pos = pyrr.matrix44.multiply(rotate1, pos) 
-    pos = pyrr.matrix44.multiply(rotate2, pos) 
+    pos = pyrr.matrix44.multiply(rotate_x, pos) 
+    pos = pyrr.matrix44.multiply(rotate_y, pos) 
+    pos = pyrr.matrix44.multiply(rotate_z, pos) 
     pos = pyrr.matrix44.multiply(scale, pos) 
 
     glBindVertexArray(spaceship_VAO)
@@ -495,9 +508,6 @@ while not window_should_close(window):
     # Poll for and process events
     poll_events()
 
-    process_gamepad_input(get_gamepad_state(0))
-
-    move_cam(velocity)
 
 # terminate glfw, free up allocated resources
 terminate()
