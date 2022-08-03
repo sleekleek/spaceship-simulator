@@ -10,7 +10,7 @@ class Camera:
     def __init__(self, boundary):
         self.boundary = boundary
 
-        self.camera_pos = Vector3([2000, 2000, 2000])
+        self.camera_pos = Vector3([5000, 5000, 5000])
         self.camera_front = Vector3([0.0, 0.0, -1.0])
         self.camera_up = Vector3([0.0, 1.0, 0.0])
         self.camera_right = Vector3([1.0, 0.0, 0.0])

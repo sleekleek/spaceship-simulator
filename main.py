@@ -106,10 +106,10 @@ def mouse_button_clb(window, button, action, mods):
 def scroll_callback(window, xoff, yoff):
     global velocity
 
-    if yoff == 1 and velocity < 100:
-        velocity *= 2
+    if yoff == 1 and velocity < 2 * scaling_multiplier:
+        velocity *= 1.25
     elif yoff == -1 and velocity > 10:
-        velocity /= 2
+        velocity /= 1.25
 
 def key_callback(window, key, scancode, action, mods):
     global left, right, forward, backward, up, down
@@ -142,9 +142,9 @@ def key_callback(window, key, scancode, action, mods):
     elif key == KEY_SPACE and action == RELEASE:
         up = False
 
-    if key == KEY_LEFT_CONTROL and action == PRESS:
+    if (key == KEY_LEFT_CONTROL or key == KEY_C) and action == PRESS:
         down = True
-    elif key == KEY_LEFT_CONTROL and action == RELEASE:
+    elif (key == KEY_LEFT_CONTROL or key == KEY_C) and action == RELEASE:
         down = False
 
 def process_gamepad_input(gamepad_state):
@@ -335,7 +335,7 @@ orbit_speed_multiplier = 0.5
 planet_orbit    = [1.003, 0.000, 1.590, 1.180, 1.000, 0.808, 0.439, 0.325, 0.228, 0.182]  # planet orbit around the origin (SUN)
 planet_orbit = [planet * orbit_speed_multiplier for planet in planet_orbit]
 
-scaling_multiplier = 250
+scaling_multiplier = 500
 planet_scaling  = [0.272, 7.00, 0.7, 0.949, 1.000, 0.532, 7.21, 5.450, 4.010, 3.880]  # planet size
 planet_scaling = [planet * scaling_multiplier for planet in planet_scaling]
 
