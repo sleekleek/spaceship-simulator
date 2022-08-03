@@ -111,10 +111,10 @@ def mouse_button_clb(window, button, action, mods):
 def scroll_callback(window, xoff, yoff):
 	global velocity
 
-	if yoff == 1:
-		velocity += 0.01
-	if yoff == -1:
-		velocity -= 0.01
+    if yoff == 1:
+        velocity += 0.01
+    if yoff == -1 and velocity > 0.02:
+        velocity -= 0.01
 
 def key_callback(window, key, scancode, action, mods):
 	global left, right, forward, backward, up, down
@@ -205,20 +205,29 @@ def process_gamepad_input(gamepad_state):
 		up = False
 
 
-# move camera view, called in the main loop
+# move camera view and rotate spaceship, called in the main loop
 def move_cam(velocity):
-	if left:
-		cam.process_keyboard("LEFT", velocity)
-	if right:
-		cam.process_keyboard("RIGHT", velocity)
-	if forward:
-		cam.process_keyboard("FORWARD", velocity)
-	if backward:
-		cam.process_keyboard("BACKWARD", velocity)
-	if up:
-		cam.process_keyboard("UP", velocity)
-	if down:
-		cam.process_keyboard("DOWN", velocity)
+    plane_rotate_fb = 2.8
+    plane_rotate_lr = 0
+
+    if left:
+        cam.process_keyboard("LEFT", velocity)
+        plane_rotate_lr = 1
+    if right:
+        cam.process_keyboard("RIGHT", velocity)
+        plane_rotate_lr = -1
+    if forward:
+        cam.process_keyboard("FORWARD", velocity)
+        plane_rotate_fb = 3
+    if backward:
+        cam.process_keyboard("BACKWARD", velocity)
+        plane_rotate_fb = 2.6
+    if up:
+        cam.process_keyboard("UP", velocity)
+    if down:
+        cam.process_keyboard("DOWN", velocity)
+
+    return plane_rotate_fb, plane_rotate_lr
 
 
 # Initializing glfw library
@@ -328,8 +337,8 @@ print("Planet meshes loaded!")
 
 # set each planet's rotation speed
 #				   moon    sun  mercury venus  earth   mars jupiter saturn uranus neptune
-planet_rotation	= [0.000, 0.000, 0.000, 0.000, 1.000, 0.000, 0.000, 0.000, 0.000, 0.000]  # orbit speed
-planet_orbit	= [0.000, 0.000, 0.000, 0.000, 1.000, 0.000, 0.000, 0.000, 0.000, 0.000]  # orbit radial velocity
+planet_rotation	= [0.000, 0.000, 0.000, 0.000, 1.000, 0.000, 0.000, 0.000, 0.000, 0.000]  # planet rotation around its own axis
+planet_orbit	= [0.000, 0.000, 0.000, 0.000, 1.000, 0.000, 0.000, 0.000, 0.000, 0.000]  # planet orbit around the origin (SUN)
 planet_scaling	= [0.272, 0.000, 0.383, 0.949, 1.000, 0.532, 11.21, 9.450, 4.010, 3.880]  # planet size
 
 moon_coor 	 = [0, 1, -50]
@@ -427,25 +436,23 @@ glUniformMatrix4fv(view_loc, 1, GL_FALSE, view)
 
 
 def rotate_draw(index):
-	# Rotate
-	#rot_x = pyrr.Matrix44.from_x_rotation(planet_orbit[index] * get_time())
-	rot_y = pyrr.Matrix44.from_y_rotation(planet_orbit[index] * get_time())
-	#rot = pyrr.matrix44.multiply(rot_y, rot_x)
-	rot1_y = pyrr.Matrix44.from_y_rotation(planet_rotation[index] * get_time()) 
-	
-	scale = pyrr.Matrix44.from_scale(pyrr.Vector3([planet_scaling[index] for x in range(3)]))
-	rotate = pyrr.matrix44.multiply(rot1_y, scale) #rotate
-	final = pyrr.matrix44.multiply(planet_positions[index], rotate) #translate
-	model = pyrr.matrix44.multiply(final, rot_y) #rotate
-	
-	# Draw
-	glBindVertexArray(VAO[index])
-	glBindTexture(GL_TEXTURE_2D, textures[index])
-	glUniformMatrix4fv(model_loc, 1, GL_FALSE, model)
-	glUniformMatrix4fv(light_loc, 1, GL_FALSE, model)
-	glDrawArrays(GL_TRIANGLES, 0, len(planet_indices[index]))
-	# glDrawElements(GL_TRIANGLES, len(planet_indices[index]), GL_UNSIGNED_INT, None)
+    # Rotate
+    rot_orbit = pyrr.Matrix44.from_y_rotation(planet_orbit[index] * get_time())
+    rot_rotation = pyrr.Matrix44.from_y_rotation(planet_rotation[index] * get_time()) 
+    
 
+    scale = pyrr.Matrix44.from_scale(pyrr.Vector3([planet_scaling[index] for x in range(3)]))
+    translation = pyrr.matrix44.multiply(scale, planet_positions[index]) #translate to different positions
+    rotate = pyrr.Matrix44(translation) * rot_rotation #rotate around its own axis
+    model = pyrr.matrix44.multiply(rotate, rot_orbit) #orbit around the sun
+    
+    # Draw
+    glBindVertexArray(VAO[index])
+    glBindTexture(GL_TEXTURE_2D, textures[index])
+    glUniformMatrix4fv(model_loc, 1, GL_FALSE, model)
+    glUniformMatrix4fv(light_loc, 1, GL_FALSE, model)
+    glDrawArrays(GL_TRIANGLES, 0, len(planet_indices[index]))
+    # glDrawElements(GL_TRIANGLES, len(planet_indices[index]), GL_UNSIGNED_INT, None)
 
 
 # The main application loop
@@ -455,21 +462,26 @@ while not window_should_close(window):
 	view = cam.get_view_matrix()
 	glUniformMatrix4fv(view_loc, 1, GL_FALSE, view)
 
-	for index in range(len(planet_names)):
-		rotate_draw(index)
+    process_gamepad_input(get_gamepad_state(0))
 
-	# draw spaceship
-	plane_pos = pyrr.matrix44.create_from_translation(pyrr.Vector3([0, -.5, -3]))
-	scale = pyrr.matrix44.create_from_scale(pyrr.Vector3([.1, .1, .1]))    
-	rotate = pyrr.matrix44.create_from_y_rotation(3.14)
-	rotate1 = pyrr.matrix44.create_from_x_rotation(0.25)
-	rotate2 = pyrr.matrix44.create_from_z_rotation(3.14)
-	identity_mat = pyrr.matrix44.create_identity()
-	pos = pyrr.matrix44.multiply(plane_pos, identity_mat) 
-	pos = pyrr.matrix44.multiply(rotate, pos) 
-	pos = pyrr.matrix44.multiply(rotate1, pos) 
-	pos = pyrr.matrix44.multiply(rotate2, pos) 
-	pos = pyrr.matrix44.multiply(scale, pos) 
+    plane_rotate_fb, plane_rotate_lr = move_cam(velocity)
+
+    for index in range(len(planet_names)):
+        rotate_draw(index)
+        
+    # draw spaceship
+    plane_pos = pyrr.matrix44.create_from_translation(pyrr.Vector3([0, -3, -9]))
+    scale = pyrr.matrix44.create_from_scale(pyrr.Vector3([0.5, 0.5, 0.5]))  
+    rotate_x = pyrr.matrix44.create_from_x_rotation(plane_rotate_fb)  
+    rotate_y = pyrr.matrix44.create_from_y_rotation(0.08 * plane_rotate_lr)
+    rotate_z = pyrr.matrix44.create_from_z_rotation(0.08 * plane_rotate_lr)
+
+    identity_mat = pyrr.matrix44.create_identity()
+    pos = pyrr.matrix44.multiply(plane_pos, identity_mat) 
+    pos = pyrr.matrix44.multiply(rotate_x, pos) 
+    pos = pyrr.matrix44.multiply(rotate_y, pos) 
+    pos = pyrr.matrix44.multiply(rotate_z, pos) 
+    pos = pyrr.matrix44.multiply(scale, pos) 
 
 	glBindVertexArray(spaceship_VAO)
 	glBindTexture(GL_TEXTURE_2D, spaceship_texture)
@@ -484,8 +496,6 @@ while not window_should_close(window):
 	poll_events()
 
 	process_gamepad_input(get_gamepad_state(0))
-
-	move_cam(velocity)
 
 
 # terminate glfw, free up allocated resources
