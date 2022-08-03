@@ -28,14 +28,11 @@ out vec3 vposition;
 out vec2 v_texture;
 out vec3 fragNormal;
 
-void main()
-{
-    
+void main() {
     v_texture = a_texture;
     vposition = a_position;
     fragNormal = a_normal;
     gl_Position = projection * view * model * vec4(a_position, 1.0);
-
 }
 """
 
@@ -51,9 +48,7 @@ in vec3 vposition;
 
 out vec4 out_color;
 
-void main()
-{
-
+void main() {
     vec3 gLightIntensities = vec3(5.0f, 5.0f, 5.0f);
     vec3 gLightPosition = vec3(0.0f, 0.0f, 0.0f);
 
@@ -81,7 +76,7 @@ def window_resize(window, width, height):
     if height == 0:
         height = 1
 
-    projection = pyrr.matrix44.create_perspective_projection_matrix(45, width / height, 0.1, 100)
+    projection = pyrr.matrix44.create_perspective_projection_matrix(45, width / height, 0.1, MAX_VISIBLE_DISTANCE)
     glUniformMatrix4fv(proj_loc, 1, GL_FALSE, projection)
 
 def mouse_look_clb(window, xpos, ypos):
@@ -111,10 +106,10 @@ def mouse_button_clb(window, button, action, mods):
 def scroll_callback(window, xoff, yoff):
     global velocity
 
-    if yoff == 1:
-        velocity += 0.01
-    elif yoff == -1 and velocity > 0.02:
-        velocity -= 0.01
+    if yoff == 1 and velocity < 100:
+        velocity *= 2
+    elif yoff == -1 and velocity > 10:
+        velocity /= 2
 
 def key_callback(window, key, scancode, action, mods):
     global left, right, forward, backward, up, down
@@ -151,9 +146,6 @@ def key_callback(window, key, scancode, action, mods):
         down = True
     elif key == KEY_LEFT_CONTROL and action == RELEASE:
         down = False
-
-    # if key in [KEY_W, KEY_S, KEY_D, KEY_A] and action == RELEASE:
-    #     left, right, forward, backward = False, False, False, False
 
 def process_gamepad_input(gamepad_state):
     if gamepad_state == None:
@@ -238,9 +230,9 @@ if not init():
 cam = Camera(boundary=pyrr.Vector3([100.0, 100.0, 100.0]))
 WIDTH, HEIGHT = 1280, 720
 lastX, lastY = WIDTH / 2, HEIGHT / 2
+
 look_around = False
 left, right, forward, backward, up, down = [False for x in range(6)]
-velocity = 0.1
 
 # If we are planning to use anything above 2.1 we must at least
 # request a 3.3 core context to make this work across platforms.
@@ -337,21 +329,33 @@ print("Planet meshes loaded!")
 
 # set each planet's rotation speed
 #                  moon    sun  mercury venus  earth   mars jupiter saturn uranus neptune
-planet_rotation = [0.000, 0.000, 0.000, 0.000, 1.000, 0.000, 0.000, 0.000, 0.000, 0.000]  # planet rotation around its own axis
-planet_orbit    = [0.000, 0.000, 0.000, 0.000, 1.000, 0.000, 0.000, 0.000, 0.000, 0.000]  # planet orbit around the origin (SUN)
-planet_scaling  = [0.272, 0.000, 0.383, 0.949, 1.000, 0.532, 11.21, 9.450, 4.010, 3.880]  # planet size
+planet_rotation = [0.034, 0.037, 0.006, 0.009, 1.000, 0.971, 2.415, 2.252, 1.393, 1.490]  # planet rotation around its own axis
 
-moon_coor    = [0, 1, -50]
-sun_coor     = [0, 0, 0]
-mercury_coor = [10, 0, -10]
-venus_coor   = [0, 0, 0]
-earth_coor   = [10, 0, 0]
-mars_coor    = [18, 0, -18]
-jupiter_coor = [0, 0, 0]
-saturn_coor  = [0, 0, 0]
-uranus_coor  = [30, 0, -30]
-neptune_coor = [50, 0, -50]
+orbit_speed_multiplier = 0.5
+planet_orbit    = [1.003, 0.000, 1.590, 1.180, 1.000, 0.808, 0.439, 0.325, 0.228, 0.182]  # planet orbit around the origin (SUN)
+planet_orbit = [planet * orbit_speed_multiplier for planet in planet_orbit]
 
+scaling_multiplier = 250
+planet_scaling  = [0.272, 7.00, 0.7, 0.949, 1.000, 0.532, 7.21, 5.450, 4.010, 3.880]  # planet size
+planet_scaling = [planet * scaling_multiplier for planet in planet_scaling]
+
+earth_distance = 75 * scaling_multiplier
+planet_distance = [1.105, 0.000, 0.870, 0.950, 1.100, 1.350, 2.000, 3.000, 5.17, 7.18]  # ratio of distances from the sun
+planet_distance = [planet * earth_distance for planet in planet_distance]
+
+planet_positions = []
+
+for index in range(len(planet_names)):
+    planet_positions.append(
+        pyrr.matrix44.create_from_translation(
+            pyrr.Vector3(
+                [planet_distance[index], 0, 0]
+            )
+        )
+    )
+
+velocity = 0.2 * scaling_multiplier
+MAX_VISIBLE_DISTANCE = 10 * earth_distance
 
 shader = compileProgram(
     compileShader(VERTEX_SRC, GL_VERTEX_SHADER),
@@ -413,18 +417,14 @@ glEnable(GL_BLEND)
 glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
 
-planet_translations = [moon_coor, sun_coor, mercury_coor, venus_coor, earth_coor, mars_coor, jupiter_coor, saturn_coor, uranus_coor, neptune_coor]
-planet_positions = []
-
-for index in range(len(planet_names)):
-    planet_positions.append(pyrr.matrix44.create_from_translation(pyrr.Vector3(planet_translations[index])))
-
-
 # spaceship_pos = pyrr.matrix44.create_from_translation(pyrr.Vector3([0, -5, -10]))
-projection = pyrr.matrix44.create_perspective_projection_matrix(45, WIDTH / HEIGHT, 0.1, 100)
+projection = pyrr.matrix44.create_perspective_projection_matrix(45, WIDTH / HEIGHT, 0.1, MAX_VISIBLE_DISTANCE)
 # Eye, target, up
-view = pyrr.matrix44.create_look_at(pyrr.Vector3(
-    [0, 0, 8]), pyrr.Vector3([0, 0, 0]), pyrr.Vector3([0, 1, 0]))
+view = pyrr.matrix44.create_look_at(
+    pyrr.Vector3([0, 0, 8]),
+    pyrr.Vector3([0, 0, 0]),
+    pyrr.Vector3([0, 1, 0])
+)
 
 model_loc = glGetUniformLocation(shader, "model")
 proj_loc = glGetUniformLocation(shader, "projection")
@@ -440,7 +440,6 @@ def rotate_draw(index):
     rot_orbit = pyrr.Matrix44.from_y_rotation(planet_orbit[index] * get_time())
     rot_rotation = pyrr.Matrix44.from_y_rotation(planet_rotation[index] * get_time()) 
     
-
     scale = pyrr.Matrix44.from_scale(pyrr.Vector3([planet_scaling[index] for x in range(3)]))
     translation = pyrr.matrix44.multiply(scale, planet_positions[index]) #translate to different positions
     rotate = pyrr.Matrix44(translation) * rot_rotation #rotate around its own axis
@@ -470,8 +469,8 @@ while not window_should_close(window):
         rotate_draw(index)
         
     # draw spaceship
-    plane_pos = pyrr.matrix44.create_from_translation(pyrr.Vector3([0, -3, -9]))
-    scale = pyrr.matrix44.create_from_scale(pyrr.Vector3([0.5, 0.5, 0.5]))  
+    plane_pos = pyrr.matrix44.create_from_translation(pyrr.Vector3([0, -2, -9]))
+    scale = pyrr.matrix44.create_from_scale(pyrr.Vector3([0.1, 0.1, 0.1]))  
     rotate_x = pyrr.matrix44.create_from_x_rotation(plane_rotate_fb)  
     rotate_y = pyrr.matrix44.create_from_y_rotation(0.08 * plane_rotate_lr)
     rotate_z = pyrr.matrix44.create_from_z_rotation(0.08 * plane_rotate_lr)

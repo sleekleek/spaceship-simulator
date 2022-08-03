@@ -9,8 +9,8 @@ np.seterr(divide='ignore', invalid='ignore')
 class Camera:
     def __init__(self, boundary):
         self.boundary = boundary
-        
-        self.camera_pos = Vector3([0.0, 0.0, 0.0])
+
+        self.camera_pos = Vector3([2000, 2000, 2000])
         self.camera_front = Vector3([0.0, 0.0, -1.0])
         self.camera_up = Vector3([0.0, 1.0, 0.0])
         self.camera_right = Vector3([1.0, 0.0, 0.0])
@@ -21,7 +21,7 @@ class Camera:
 
     def get_view_matrix(self):
         return matrix44.create_look_at(self.camera_pos, self.camera_pos + self.camera_front, self.camera_up)
-    
+
     def process_mouse_movement(self, xoffset, yoffset, constrain_pitch=True):
         xoffset *= self.mouse_sensitivity
         yoffset *= self.mouse_sensitivity
@@ -71,5 +71,5 @@ class Camera:
         if direction == "DOWN":
             new_camera_pos = self.camera_pos - self.camera_up * velocity
         
-        if (self.check_new_camera_pos(new_camera_pos)):
-                self.camera_pos = new_camera_pos
+        #if (self.check_new_camera_pos(new_camera_pos)):
+        self.camera_pos = new_camera_pos
