@@ -336,8 +336,8 @@ for index in range(len(planet_names)):
 print("Planet meshes loaded!")
 
 # set each planet's rotation speed
-planet_rotation = [0.1, 0.1, 0.07, 0.02, 0.09, 0.08, 0.2, 0.15, 0.095, 0.1]  # planet rotation
-planet_orbit = [0.2, 0, 0.3, 0.25, 0.2, 0.17, 0.05, 0.1, 0.2, 0.05]  # planet orbit
+planet_rotation = [0.1, 0.1, 0.07, 0.02, 0.09, 0.08, 0.2, 0.15, 0.095, 0.1]  # planet rotation around its own axis
+planet_orbit = [0.2, 0, 0.3, 0.25, 0.2, 0.17, 0.05, 0.1, 0.2, 0.05]  # planet orbit around the origin (SUN)
 
 # set each planet's size
 planet_scaling = [0.1, 2.5, 0.3, 0.6, 0.7, 0.5, 1.5, 1.4, 1.2, 1.0]
@@ -404,14 +404,14 @@ glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
 moon_coor = [60, 1, -50]
 sun_coor = [0, 0, 0]
-mercury_coor = [10, 0, -10]
-venus_coor = [10, 0, -10]
-earth_coor = [12, 0, -12]
-mars_coor = [18, 0, -18]
-jupiter_coor = [12, 0, -12]
-saturn_coor = [18, 0, -18]
-uranus_coor = [30, 0, -30]
-neptune_coor = [50, 0, -50]
+mercury_coor = [3, 0, -3]
+venus_coor = [5, 0, -5]
+earth_coor = [7, 0, -7]
+mars_coor = [12, 0, -12]
+jupiter_coor = [22, 0, -22]
+saturn_coor = [27, 0, -27]
+uranus_coor = [32, 0, -32]
+neptune_coor = [35 , 0, -35]
 
 planet_translations = [moon_coor, sun_coor, mercury_coor, venus_coor, earth_coor, mars_coor, jupiter_coor, saturn_coor, uranus_coor, neptune_coor]
 planet_positions = []
@@ -438,15 +438,14 @@ glUniformMatrix4fv(view_loc, 1, GL_FALSE, view)
 
 def rotate_draw(index):
     # Rotate
-    #rot_x = pyrr.Matrix44.from_x_rotation(planet_orbit[index] * get_time())
-    rot_y = pyrr.Matrix44.from_y_rotation(planet_orbit[index] * get_time())
-    #rot = pyrr.matrix44.multiply(rot_y, rot_x)
-    rot1_y = pyrr.Matrix44.from_y_rotation(planet_rotation[index] * get_time()) 
+    rot_orbit = pyrr.Matrix44.from_y_rotation(planet_orbit[index] * get_time())
+    rot_rotation = pyrr.Matrix44.from_y_rotation(planet_rotation[index] * get_time()) 
     
+
     scale = pyrr.Matrix44.from_scale(pyrr.Vector3([planet_scaling[index] for x in range(3)]))
-    rotate = pyrr.matrix44.multiply(rot1_y, scale) #rotate
-    final = pyrr.matrix44.multiply(planet_positions[index], rotate) #translate
-    model = pyrr.matrix44.multiply(final, rot_y) #rotate
+    translation = pyrr.matrix44.multiply(scale, planet_positions[index]) #translate to different positions
+    rotate = pyrr.Matrix44(translation) * rot_rotation #rotate around its own axis
+    model = pyrr.matrix44.multiply(rotate, rot_orbit) #orbit around the sun
     
     # Draw
     glBindVertexArray(VAO[index])
