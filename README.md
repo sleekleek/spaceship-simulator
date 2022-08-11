@@ -2,10 +2,18 @@
 ## Spaceship Simulator
 50.017 Graphics & Visualisation Project
 
+by Sheriann, Le Xuan, Ramya, Jodi, Zishan
+
 ### How To Run
 1. `pip install -r requirements.txt`
 
 2. `python main.py`
+
+
+### User Controls
+1. "WASD" - to zoom in, move left, zoom out, move right repsectively
+2. Space bar and left CONTROL to move up or down
+3. Right/Left click mouse to move around the solar system
 
 ### References
 - Keyne Oei: Creating the Solar System -- OpenGL and C++ 
